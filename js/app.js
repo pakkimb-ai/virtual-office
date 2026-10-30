@@ -3,7 +3,7 @@ import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.js";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 
-const HKT = "2026-10-31 00:10 HKT";
+const HKT = "2026-10-31 00:12 HKT";
 
 const people = {
   grok: {
@@ -56,9 +56,6 @@ const els = {
   role: document.getElementById("dlgRole"),
   motto: document.getElementById("dlgMotto"),
   task: document.getElementById("dlgTask"),
-  done: document.getElementById("dlgDone"),
-  updated: document.getElementById("dlgUpdated"),
-  link: document.getElementById("dlgLink"),
 };
 
 const scene = new THREE.Scene();
@@ -87,6 +84,11 @@ document.getElementById("btnReset").onclick = () => {
   controls.target.set(0, 0.85, 0.25);
   controls.update();
 };
+
+const hintEl = document.getElementById("hint");
+if (hintEl) {
+  setTimeout(() => hintEl.classList.add("hide"), 3000);
+}
 
 scene.add(new THREE.AmbientLight(0xfff8f0, 1.15));
 scene.add(new THREE.HemisphereLight(0xe8f4ff, 0xd8e0d0, 0.55));
@@ -962,16 +964,8 @@ function openPerson(id) {
   els.role.textContent = p.role;
   els.motto.textContent = "「" + p.motto + "」";
   els.task.textContent = p.task;
-  els.done.textContent = p.done;
-  els.updated.textContent = "更新：" + p.updated;
   els.badge.textContent = p.status === "busy" ? "忙緊" : "得閒";
   els.badge.className = "badge " + (p.status === "busy" ? "busy" : "idle");
-  if (p.link) {
-    els.link.hidden = false;
-    els.link.href = p.link;
-  } else {
-    els.link.hidden = true;
-  }
   dlg.showModal?.() || dlg.setAttribute("open", "");
 }
 
