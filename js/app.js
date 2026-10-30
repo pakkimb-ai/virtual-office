@@ -686,12 +686,48 @@ function solidColor(model, hex) {
   model.traverse((obj) => {
     if (!obj.isMesh) return;
     const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
-    mats.forEach((m) => {
-      m.map = null;
-      if (m.color) m.color.setHex(hex);
-      m.needsUpdate = true;
-    });
+    const painted = mats.map((m) => new THREE.MeshLambertMaterial({
+      color: hex,
+      transparent: !!(m && m.transparent),
+      opacity: m?.opacity ?? 1,
+      side: m?.side ?? THREE.FrontSide,
+    }));
+    obj.material = painted.length === 1 ? painted[0] : painted;
   });
+}
+
+const FLOOR_Y = 0.18;
+
+/** Hand-built light wood bookcase — never black GLTF. */
+function lightBookcase(x, z, rotY = 0, H = 2.05, W = 1.15, D = 0.42) {
+  const g = new THREE.Group();
+  const wood = 0xe8d4b8;
+  const ivory = 0xfff8ec;
+  rbox(W, H, D, wood, 0, FLOOR_Y + H / 2, 0, g, 0.04);
+  rbox(W - 0.06, H - 0.08, 0.04, ivory, 0, FLOOR_Y + H / 2, -D / 2 + 0.03, g, 0.02);
+  const shelves = 4;
+  for (let i = 0; i < shelves; i++) {
+    const sy = FLOOR_Y + 0.28 + i * ((H - 0.4) / Math.max(shelves - 1, 1));
+    rbox(W - 0.1, 0.05, D - 0.08, ivory, 0, sy, 0.02, g, 0.02);
+    colorfulBooksOnShelf(g, 0, sy + 0.02, D * 0.1, 7 - (i % 2));
+  }
+  g.position.set(x, 0, z);
+  g.rotation.y = rotY;
+  scene.add(g);
+  return g;
+}
+
+/** Tiny bright potted plant (hand-built) — no black GLTF blobs. */
+function tinyPot(parent, x, y, z, leaf = 0x5a9a3a, scale = 1) {
+  const g = new THREE.Group();
+  cyl(0.09 * scale, 0.07 * scale, 0.12 * scale, 0xfff8ec, 0, 0.06 * scale, 0, g, 12);
+  cyl(0.08 * scale, 0.08 * scale, 0.03 * scale, 0xe8dcc8, 0, 0.12 * scale, 0, g, 12);
+  sphere(0.11 * scale, leaf, 0, 0.22 * scale, 0, g, 1.1);
+  sphere(0.07 * scale, 0x6bcb77, 0.06 * scale, 0.26 * scale, 0.04 * scale, g);
+  sphere(0.06 * scale, leaf, -0.05 * scale, 0.24 * scale, -0.03 * scale, g);
+  g.position.set(x, y, z);
+  parent.add(g);
+  return g;
 }
 
 function addScreenPlane(parent, map, x, y, z, w = 0.5, h = 0.32) {
@@ -1018,13 +1054,13 @@ function imac(g, x, y, z, screenMap = null, scale = 1) {
 }
 function photocopier(x, z, rotY = 0) {
   const g = new THREE.Group();
-  // ~half a desk wide — ivory body, not oversized
-  rbox(0.55, 0.42, 0.48, 0xf5f2ea, 0, 0.38, 0, g, 0.07);
-  rbox(0.48, 0.06, 0.4, 0xe8e4dc, 0, 0.62, 0, g, 0.03);
-  rbox(0.22, 0.04, 0.28, 0x6a7080, -0.1, 0.68, 0.04, g, 0.02);
-  rbox(0.14, 0.03, 0.12, 0x5a6070, 0.16, 0.67, 0.08, g, 0.02);
-  rbox(0.32, 0.025, 0.18, 0xfff8ec, 0, 0.58, 0.28, g, 0.01);
-  cyl(0.025, 0.025, 0.03, 0x5b8def, 0.18, 0.72, -0.1, g, 8);
+  // desk-prop scale — ivory / light grey only
+  rbox(0.42, 0.32, 0.36, 0xf7f4ee, 0, 0.3, 0, g, 0.05);
+  rbox(0.36, 0.045, 0.3, 0xe8e4dc, 0, 0.48, 0, g, 0.02);
+  rbox(0.16, 0.03, 0.2, 0xb0b4bc, -0.08, 0.52, 0.03, g, 0.015);
+  rbox(0.1, 0.025, 0.09, 0xc8ccd4, 0.12, 0.51, 0.06, g, 0.015);
+  rbox(0.24, 0.02, 0.14, 0xfff8ec, 0, 0.45, 0.2, g, 0.01);
+  cyl(0.02, 0.02, 0.025, 0x5b8def, 0.14, 0.55, -0.08, g, 8);
   g.position.set(x, 0, z);
   g.rotation.y = rotY;
   scene.add(g);
@@ -1071,7 +1107,6 @@ async function deskSet(id, x, z, label) {
   g.position.set(x, 0, z);
 
   // Desk: light wood top; legs on floor (~0.18); surface ~0.92
-  const FLOOR_Y = 0.18;
   const TOP_Y = 0.92;
   const desk = await loadKay("table_medium_long");
   placeFit(desk, g, 0, FLOOR_Y, 0, TOP_Y - FLOOR_Y, 0); // height ≈ 0.74 → top @ 0.92
@@ -1113,26 +1148,32 @@ async function deskSet(id, x, z, label) {
   sitOn(kb, topY);
 
   // Mouse: light grey/white — never pure black
-  const mouse = await loadKen("computerMouse");
-  solidColor(mouse, 0xe8e4dc);
-  mouse.scale.setScalar(1);
-  mouse.position.set(0, 0, 0);
-  fitWidth(mouse, 0.08);
+  // hand-built light grey mouse — never Kenney black
+  const mouse = new THREE.Group();
+  const mouseBody = new THREE.Mesh(
+    new RoundedBoxGeometry(0.09, 0.035, 0.13, 2, 0.02),
+    new THREE.MeshLambertMaterial({ color: 0xece8e0 })
+  );
+  mouseBody.castShadow = true;
+  mouse.add(mouseBody);
+  const mouseBtn = new THREE.Mesh(
+    new THREE.BoxGeometry(0.012, 0.01, 0.04),
+    new THREE.MeshLambertMaterial({ color: 0xd0ccc4 })
+  );
+  mouseBtn.position.set(0, 0.02, -0.01);
+  mouse.add(mouseBtn);
+  mouse.position.set(0.42, topY + 0.02, 0.2);
   g.add(mouse);
-  mouse.position.set(0.42, 0, 0.2);
-  sitOn(mouse, topY);
 
   if (id === "ai") {
     imac(g, -0.22, topY + 0.16, -0.3, ideScreenTex(), 0.95);
     imac(g, 0.42, topY + 0.16, -0.3, grassDesktopTex(), 0.85);
-    const plant = await loadKay("cactus_small_A");
-    placeFit(plant, g, -0.72, topY, 0.18, 0.28, 0);
+    tinyPot(g, -0.72, topY, 0.18, 0x5a9a3a, 0.85);
   } else if (id === "write") {
     imac(g, 0.02, topY + 0.16, -0.3, docScreenTex(), 0.95);
     const books = await loadKay("book_set");
     placeFit(books, g, -0.5, topY, 0.05, 0.22, 0.25);
-    const plant = await loadKen("plantSmall1");
-    placeFit(plant, g, -0.7, topY, -0.18, 0.3, 0);
+    tinyPot(g, -0.7, topY, -0.18, 0x6bcb77, 0.8);
   } else if (id === "design") {
     // drawing tablet — deep blue-grey, not dead black
     rbox(0.72, 0.035, 0.5, 0x3a4558, 0.02, topY + 0.025, 0.06, g, 0.04);
@@ -1140,8 +1181,7 @@ async function deskSet(id, x, z, label) {
     addScreenPlane(g, designScreenTex(), 0.02, topY + 0.05, 0.06, 0.6, 0.4);
     colorFan(g, -0.5, topY + 0.035, -0.18);
     imac(g, 0.52, topY + 0.14, -0.32, grassDesktopTex(), 0.7);
-    const plant = await loadKay("cactus_medium_A");
-    placeFit(plant, g, -0.65, topY, -0.22, 0.32, 0);
+    tinyPot(g, -0.65, topY, -0.22, 0x4a8a3a, 0.9);
   } else if (id === "grok") {
     imac(g, 0.18, topY + 0.16, -0.3, checklistBoardTex(), 0.9);
     const mini = new THREE.Mesh(
@@ -1152,8 +1192,7 @@ async function deskSet(id, x, z, label) {
     mini.castShadow = true;
     g.add(mini);
     walkie(g, 0.5, topY + 0.14, 0.12);
-    const plant = await loadKay("cactus_small_A");
-    placeFit(plant, g, -0.72, topY, 0.2, 0.28, 0);
+    tinyPot(g, -0.72, topY, 0.2, 0x5a9a3a, 0.85);
   }
 
   // mini pumpkin on every desk
@@ -1219,87 +1258,52 @@ async function decorateWalls() {
   hangingIvy(-7.55, 4.2, -2.5, 1.1);
   hangingIvy(7.55, 4.2, 1.5, 0.9);
 
-  // wall plant shelf near window (below window sill ~1.65)
-  const shelf = await loadKay("shelf_A_small");
-  placeFit(shelf, scene, 0.85, 2.2, -6.5, 0.35, 0);
-  const plant = await loadKay("cactus_small_A");
-  placeFit(plant, scene, 0.6, 2.4, -6.45, 0.28, 0);
-  const plant2 = await loadKay("cactus_medium_A");
-  placeFit(plant2, scene, 1.15, 2.4, -6.45, 0.32, 0.4);
+  // window shelf — ivory + tiny bright pots (no black GLTF cactus)
+  rbox(1.1, 0.08, 0.28, 0xfff8ec, 0.85, 2.35, -6.5, scene, 0.03);
+  rbox(1.14, 0.04, 0.06, 0xc4a574, 0.85, 2.3, -6.38, scene, 0.02);
+  tinyPot(scene, 0.55, 2.39, -6.45, 0x5a9a3a, 0.85);
+  tinyPot(scene, 0.95, 2.39, -6.45, 0x6bcb77, 0.7);
+  tinyPot(scene, 1.25, 2.39, -6.45, 0x4a8a3a, 0.75);
+
+  // Light hand-built bookcases (replaces black KayKit/Kenney shelves)
+  lightBookcase(-6.55, -5.35, 0.1, 2.05, 1.2, 0.45);
+  lightBookcase(-6.55, -3.7, Math.PI / 2, 2.05, 1.05, 0.42);
+  tinyPot(scene, -6.55, 2.25, -5.1, 0x5a9a3a, 0.9);
+  tinyPot(scene, -6.55, 2.25, -3.45, 0x6bcb77, 0.8);
+
+  // right: low ivory cabinet (hand) — no dark GLTF cabinet
+  rbox(0.95, 1.05, 0.5, 0xe8d4b8, 6.4, FLOOR_Y + 0.525, -5.5, scene, 0.06);
+  rbox(0.88, 0.04, 0.44, 0xfff8ec, 6.4, FLOOR_Y + 0.55, -5.5, scene, 0.02);
+  rbox(0.88, 0.04, 0.44, 0xfff8ec, 6.4, FLOOR_Y + 0.95, -5.5, scene, 0.02);
+  colorfulBooksOnShelf(scene, 6.35, FLOOR_Y + 1.0, -5.35, 6);
+  tinyPot(scene, 6.4, FLOOR_Y + 1.1, -5.5, 0x5a9a3a, 0.85);
+  rbox(0.7, 0.07, 0.24, 0xfff8ec, 6.55, 2.2, -4.2, scene, 0.03);
+  tinyPot(scene, 6.55, 2.24, -4.2, 0x6bcb77, 0.7);
+
+  // standing lamps — ivory paint, height ≤ ~1.85
   try {
-    const ps = await loadKen("plantSmall2");
-    placeFit(ps, scene, 0.9, 2.4, -6.4, 0.3, 0);
+    const lamp = await loadKay("lamp_standing");
+    solidColor(lamp, 0xfff0e0);
+    placeFit(lamp, scene, -6.4, FLOOR_Y, 3.6, 1.85, 0);
+  } catch (_) {}
+  try {
+    const lamp2 = await loadKay("lamp_standing");
+    solidColor(lamp2, 0xfff0e0);
+    placeFit(lamp2, scene, 6.45, FLOOR_Y, 2.8, 1.8, Math.PI);
   } catch (_) {}
 
-  // Bookcase / shelf — height ≤ window lower edge (~1.65 sill, frames to ~4.5)
-  // Tall furniture ~2.4–2.5, below ceiling vibes
-  try {
-    const case1 = await loadKen("bookcaseOpenLow");
-    placeFit(case1, scene, -6.55, 0.18, -5.5, 1.6, 0.15);
-  } catch (_) {}
-  const bigShelf = await loadKay("shelf_A_big");
-  placeFit(bigShelf, scene, -6.6, 0.18, -3.6, 2.45, Math.PI / 2);
-  colorfulBooksOnShelf(scene, -6.55, 0.75, -3.55, 8);
-  colorfulBooksOnShelf(scene, -6.55, 1.35, -3.55, 7);
-  colorfulBooksOnShelf(scene, -6.55, 1.95, -3.55, 6);
-  const topP = await loadKay("cactus_small_A");
-  placeFit(topP, scene, -6.55, 2.55, -3.3, 0.28, 0);
-  try {
-    const topP2 = await loadKen("plantSmall3");
-    placeFit(topP2, scene, -6.55, 2.55, -3.9, 0.32, 0.3);
-  } catch (_) {}
-  const books2 = await loadKay("book_set");
-  placeFit(books2, scene, -6.5, 1.05, -5.35, 0.28, 0.2);
-  const single = await loadKay("book_single");
-  placeFit(single, scene, -6.45, 1.55, -5.55, 0.22, 0.1);
+  // Corner plants: ONLY tiny hand-built — no pottedPlant / big cactus
+  tinyPot(scene, -6.4, FLOOR_Y, 5.0, 0x5a9a3a, 1.6);
+  tinyPot(scene, -5.9, FLOOR_Y, 5.35, 0x6bcb77, 1.2);
+  tinyPot(scene, 6.4, FLOOR_Y, 4.4, 0x4a8a3a, 1.5);
+  tinyPot(scene, 6.2, FLOOR_Y, -1.8, 0x5a9a3a, 1.35);
 
-  // second cabinet / low shelf right back
-  const cab = await loadKay("cabinet_small");
-  placeFit(cab, scene, 6.4, 0.18, -5.5, 1.15, -0.3);
-  const booksR = await loadKay("book_set");
-  placeFit(booksR, scene, 6.4, 1.15, -5.5, 0.28, -0.3);
-  colorfulBooksOnShelf(scene, 6.35, 1.45, -5.35, 5);
-  try {
-    const shelfR = await loadKay("shelf_B_small");
-    placeFit(shelfR, scene, 6.55, 2.15, -4.2, 0.35, -Math.PI / 2);
-    const pr = await loadKen("plantSmall1");
-    placeFit(pr, scene, 6.5, 2.35, -4.2, 0.3, 0);
-  } catch (_) {}
-
-  // standing lamps — ≤ ~2.0, under window top
-  const lamp = await loadKay("lamp_standing");
-  placeFit(lamp, scene, -6.4, 0.18, 3.6, 1.95, 0);
-  const lamp2 = await loadKay("lamp_standing");
-  placeFit(lamp2, scene, 6.45, 0.18, 2.8, 1.9, Math.PI);
-
-  // corner plants — tall but under window (~1.8–2.1)
-  try {
-    const tree = await loadKen("pottedPlant");
-    placeFit(tree, scene, -6.5, 0.18, 5.0, 2.0, 0.2);
-  } catch (_) {
-    const p1 = await loadKay("cactus_medium_A");
-    placeFit(p1, scene, -6.5, 0.18, 5.0, 1.6, 0);
-  }
-  const p2 = await loadKay("cactus_medium_A");
-  placeFit(p2, scene, 6.5, 0.18, 4.4, 1.4, 0.5);
-  try {
-    const p3 = await loadKen("pottedPlant");
-    placeFit(p3, scene, 6.3, 0.18, -1.8, 1.7, -0.4);
-  } catch (_) {}
-  try {
-    const p4 = await loadKen("plantSmall2");
-    placeFit(p4, scene, -5.8, 0.18, 5.4, 0.55, 0);
-  } catch (_) {}
-
-  // side table props
-  try {
-    const st = await loadKen("sideTable");
-    placeFit(st, scene, -6.3, 0.18, 1.2, 0.7, 0.4);
-    const bks = await loadKen("books");
-    placeFit(bks, scene, -6.3, 0.75, 1.2, 0.18, 0.2);
-  } catch (_) {}
+  // side table — hand ivory
+  rbox(0.7, 0.55, 0.5, 0xe8d4b8, -6.3, FLOOR_Y + 0.275, 1.2, scene, 0.06);
+  rbox(0.72, 0.04, 0.52, 0xfff8ec, -6.3, FLOOR_Y + 0.56, 1.2, scene, 0.02);
+  colorfulBooksOnShelf(scene, -6.3, FLOOR_Y + 0.58, 1.25, 4);
+  deskCup(scene, -6.1, FLOOR_Y + 0.64, 1.35, 0xff8a1f);
 }
-
 function openPerson(id) {
   const p = people[id];
   if (!p) return;
