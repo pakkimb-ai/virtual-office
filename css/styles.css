@@ -83,3 +83,7 @@ h1 { margin: 0; font-size: 1.35rem; font-weight: 900; color: #3d2a20; }
   box-shadow: 0 4px 0 #3d2a20;
 }
 .foot { text-align: center; padding: 6px 16px 24px; color: var(--muted); font-size: .72rem; font-weight: 650; }
+
+.foot a { color: #8a6040; text-decoration: underline; }
+.foot a:hover { color: #ff8a1f; }
+
