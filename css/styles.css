@@ -1,0 +1,204 @@
+:root {
+  --bg: #12081f;
+  --bg2: #1a0b2e;
+  --card: #241338;
+  --card2: #2e1848;
+  --text: #f6eef8;
+  --muted: #b9a3c9;
+  --line: #4a2d6a;
+  --orange: #ff8a1f;
+  --orange2: #ffb347;
+  --purple: #9b5cff;
+  --green: #3dd68c;
+  --amber: #ffd166;
+  --shadow: 0 8px 0 rgba(0,0,0,.35);
+  --radius: 18px;
+  --font: "PingFang HK", "Noto Sans TC", "Helvetica Neue", system-ui, sans-serif;
+}
+
+* { box-sizing: border-box; }
+html, body {
+  margin: 0;
+  padding: 0;
+  min-height: 100dvh;
+  font-family: var(--font);
+  color: var(--text);
+  background:
+    radial-gradient(ellipse 90% 60% at 10% -10%, #5b2a8a 0%, transparent 55%),
+    radial-gradient(ellipse 70% 50% at 100% 0%, #7a3a12 0%, transparent 50%),
+    linear-gradient(180deg, var(--bg2), var(--bg));
+  line-height: 1.45;
+}
+.fog {
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(ellipse at 50% 110%, rgba(255,138,31,.12), transparent 55%);
+  z-index: 0;
+}
+.app {
+  position: relative;
+  z-index: 1;
+  max-width: 920px;
+  margin: 0 auto;
+  padding: 18px 16px 48px;
+}
+
+.topbar { margin-bottom: 14px; }
+.brand { display: flex; gap: 12px; align-items: center; }
+.pumpkin { font-size: 2rem; filter: drop-shadow(0 4px 0 rgba(0,0,0,.35)); }
+.topbar h1 {
+  margin: 0;
+  font-size: 1.45rem;
+  font-weight: 900;
+  letter-spacing: .02em;
+}
+.season {
+  margin: 2px 0 0;
+  color: var(--orange2);
+  font-weight: 800;
+  font-size: .85rem;
+}
+.tagline {
+  margin: 12px 0 0;
+  padding: 12px 14px;
+  border-radius: var(--radius);
+  background: rgba(36, 19, 56, .85);
+  border: 2px solid var(--line);
+  font-weight: 700;
+  color: #f0e2ff;
+}
+
+.meta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 12px 0 16px;
+}
+.pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, var(--orange2), var(--orange));
+  color: #2a1400;
+  font-weight: 900;
+  font-size: .78rem;
+  border: 2px solid #2a1400;
+}
+.pill.soft {
+  background: rgba(155, 92, 255, .2);
+  color: #e8d8ff;
+  border-color: var(--line);
+}
+
+.desk-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 12px;
+}
+
+.desk {
+  background: linear-gradient(165deg, var(--card2), var(--card));
+  border: 2.5px solid var(--line);
+  border-radius: 20px;
+  padding: 14px;
+  box-shadow: var(--shadow);
+  min-height: 148px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.desk-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: flex-start;
+}
+.desk h2 {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 900;
+}
+.role {
+  margin: 2px 0 0;
+  color: var(--muted);
+  font-size: .78rem;
+  font-weight: 700;
+}
+.badge {
+  flex: 0 0 auto;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: .72rem;
+  font-weight: 900;
+  border: 2px solid #1a0b2e;
+}
+.badge.busy {
+  background: linear-gradient(180deg, #ffd166, #ff8a1f);
+  color: #2a1400;
+}
+.badge.idle {
+  background: linear-gradient(180deg, #7dffb5, var(--green));
+  color: #0b2a1a;
+}
+.task {
+  font-size: .92rem;
+  font-weight: 700;
+  flex: 1;
+}
+.updated {
+  color: var(--muted);
+  font-size: .72rem;
+  font-weight: 700;
+}
+
+.extras {
+  display: grid;
+  grid-template-columns: 1.2fr .8fr;
+  gap: 12px;
+  margin-top: 16px;
+}
+@media (max-width: 700px) {
+  .extras { grid-template-columns: 1fr; }
+}
+.panel {
+  background: rgba(36, 19, 56, .9);
+  border: 2.5px solid var(--line);
+  border-radius: 20px;
+  padding: 14px;
+  box-shadow: var(--shadow);
+}
+.panel h2 {
+  margin: 0 0 8px;
+  font-size: 1rem;
+  font-weight: 900;
+}
+.muted { color: var(--muted); font-size: .85rem; font-weight: 650; margin: 0 0 10px; }
+.preview-slot {
+  min-height: 88px;
+  border-radius: 14px;
+  border: 2px dashed #6a3f8f;
+  background: rgba(255, 138, 31, .08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 12px;
+  font-weight: 800;
+  color: var(--orange2);
+}
+.prio {
+  margin: 0;
+  padding-left: 1.1rem;
+  font-weight: 700;
+  font-size: .9rem;
+}
+.prio li { margin-bottom: 6px; }
+.foot {
+  margin-top: 22px;
+  text-align: center;
+  color: var(--muted);
+  font-size: .78rem;
+  font-weight: 650;
+}

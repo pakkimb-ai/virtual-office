@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="zh-Hant-HK">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#1a0b2e" />
+  <title>虛擬辦公室 · 🎃 Halloween</title>
+  <link rel="stylesheet" href="css/styles.css?v=1" />
+</head>
+<body>
+  <div class="fog" aria-hidden="true"></div>
+  <div class="app">
+    <header class="topbar">
+      <div class="brand">
+        <span class="pumpkin" aria-hidden="true">🎃</span>
+        <div>
+          <h1>虛擬辦公室</h1>
+          <p class="season">Halloween 2026 · 季節主題試水</p>
+        </div>
+      </div>
+      <p class="tagline" id="opening">「燈未全熄，工位已醒——今晚大家喺呢度對齊。」</p>
+    </header>
+
+    <section class="meta-row" aria-label="辦公室狀態">
+      <span class="pill">v1 狀態板</span>
+      <span class="pill soft" id="clock">—</span>
+      <span class="pill soft">靜態示範 · 之後可接即時同步</span>
+    </section>
+
+    <main id="deskGrid" class="desk-grid" aria-live="polite"></main>
+
+    <section class="extras">
+      <article class="panel">
+        <h2>✂️ 剪片角落</h2>
+        <p class="muted">氣氛素材／進度預覽位（由剪片助手補）</p>
+        <div class="preview-slot" id="cutPreview">
+          <span>🎃 霧 · 橙紫轉場 · 片頭位待掛</span>
+        </div>
+      </article>
+      <article class="panel">
+        <h2>📌 而家優先</h2>
+        <ul class="prio" id="prioList">
+          <li>狀態板可開 URL（本頁）</li>
+          <li>萬聖節皮：色板＋工位卡</li>
+          <li>之後再考慮即時狀態／3D</li>
+        </ul>
+      </article>
+    </section>
+
+    <footer class="foot">
+      <p>Creator: Paper P. · 資料為示範狀態，實際進度以各隊友 1:1／本房為準。</p>
+    </footer>
+  </div>
+  <script src="js/app.js?v=1"></script>
+</body>
+</html>
