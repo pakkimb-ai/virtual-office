@@ -1,6 +1,9 @@
-# 虛擬辦公室
+# 虛擬辦公室 🎃
 
-Pak 嘅虛擬辦公室狀態板（萬聖節主題試水）。
+萬聖節等距卡通地圖狀態板（v1）。
 
-GitHub Pages 上線後開本 repo 嘅 Pages URL。
-Pages rebuild 2026-10-30T21:42:00+08:00
+- 撳工位睇忙／閒同而家做緊咩
+
+- 真 WebGL 3D 之後再升
+
+https://pakkimb-ai.github.io/virtual-office/

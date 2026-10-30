@@ -3,54 +3,90 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="theme-color" content="#1a0b2e" />
-  <title>虛擬辦公室 · 🎃 Halloween</title>
-  <link rel="stylesheet" href="css/styles.css?v=1" />
+  <meta name="theme-color" content="#1A1224" />
+  <title>虛擬辦公室 🎃 · 等距地圖</title>
+  <link rel="stylesheet" href="css/styles.css?v=2" />
 </head>
 <body>
-  <div class="fog" aria-hidden="true"></div>
-  <div class="app">
-    <header class="topbar">
-      <div class="brand">
-        <span class="pumpkin" aria-hidden="true">🎃</span>
-        <div>
-          <h1>虛擬辦公室</h1>
-          <p class="season">Halloween 2026 · 季節主題試水</p>
+  <div class="mist" aria-hidden="true"></div>
+  <div class="bats" aria-hidden="true">🦇 🦇</div>
+
+  <header class="top">
+    <div class="title-wrap">
+      <h1>虛擬辦公室 <span class="emoji">🎃</span></h1>
+      <span class="season-pill">萬聖節 · 等距地圖 v1</span>
+    </div>
+    <p class="blurb">虛擬辦公室 · 萬聖節 — 撳工位睇邊個忙、邊個閒</p>
+  </header>
+
+  <div class="stage-wrap">
+    <div class="stage" id="stage">
+      <!-- isometric room -->
+      <div class="iso-room">
+        <div class="floor"></div>
+        <div class="wall-back"></div>
+        <div class="wall-side"></div>
+        <div class="deco pumpkin-a">🎃</div>
+        <div class="deco pumpkin-b">🎃</div>
+        <div class="deco bat-wall">🦇</div>
+        <div class="deco lamp">🕯️</div>
+
+        <button type="button" class="desk" data-id="grok" style="--x:18%; --y:42%">
+          <span class="desk-3d"></span>
+          <span class="chair"></span>
+          <span class="lamp-dot busy" aria-hidden="true"></span>
+          <span class="desk-label">Grok Bot</span>
+        </button>
+        <button type="button" class="desk" data-id="ai" style="--x:42%; --y:28%">
+          <span class="desk-3d"></span>
+          <span class="chair"></span>
+          <span class="lamp-dot busy" aria-hidden="true"></span>
+          <span class="desk-label">AI開發</span>
+        </button>
+        <button type="button" class="desk" data-id="design" style="--x:66%; --y:38%">
+          <span class="desk-3d"></span>
+          <span class="chair"></span>
+          <span class="lamp-dot busy" aria-hidden="true"></span>
+          <span class="desk-label">設計</span>
+        </button>
+        <button type="button" class="desk" data-id="write" style="--x:30%; --y:62%">
+          <span class="desk-3d"></span>
+          <span class="chair"></span>
+          <span class="lamp-dot busy" aria-hidden="true"></span>
+          <span class="desk-label">寫作</span>
+        </button>
+        <button type="button" class="desk" data-id="cut" style="--x:58%; --y:58%">
+          <span class="desk-3d"></span>
+          <span class="chair"></span>
+          <span class="lamp-dot idle" aria-hidden="true"></span>
+          <span class="desk-label">剪片</span>
+        </button>
+
+        <div class="screen-wall" title="剪片預覽屏">
+          <div class="screen">
+            <span>✂️ 氣氛預覽</span>
+            <small>Halloween 片頭 slot</small>
+          </div>
         </div>
       </div>
-      <p class="tagline" id="opening">「燈未全熄，工位已醒——今晚大家喺呢度對齊。」</p>
-    </header>
-
-    <section class="meta-row" aria-label="辦公室狀態">
-      <span class="pill">v1 狀態板</span>
-      <span class="pill soft" id="clock">—</span>
-      <span class="pill soft">靜態示範 · 之後可接即時同步</span>
-    </section>
-
-    <main id="deskGrid" class="desk-grid" aria-live="polite"></main>
-
-    <section class="extras">
-      <article class="panel">
-        <h2>✂️ 剪片角落</h2>
-        <p class="muted">氣氛素材／進度預覽位（由剪片助手補）</p>
-        <div class="preview-slot" id="cutPreview">
-          <span>🎃 霧 · 橙紫轉場 · 片頭位待掛</span>
-        </div>
-      </article>
-      <article class="panel">
-        <h2>📌 而家優先</h2>
-        <ul class="prio" id="prioList">
-          <li>狀態板可開 URL（本頁）</li>
-          <li>萬聖節皮：色板＋工位卡</li>
-          <li>之後再考慮即時狀態／3D</li>
-        </ul>
-      </article>
-    </section>
-
-    <footer class="foot">
-      <p>Creator: Paper P. · 資料為示範狀態，實際進度以各隊友 1:1／本房為準。</p>
-    </footer>
+    </div>
+    <p class="hint">撳橙色／綠色燈嘅工位睇狀態</p>
   </div>
-  <script src="js/app.js?v=1"></script>
+
+  <dialog id="deskDialog" class="desk-dialog">
+    <form method="dialog">
+      <header>
+        <h2 id="dlgName">—</h2>
+        <span id="dlgBadge" class="badge">—</span>
+      </header>
+      <p class="role" id="dlgRole"></p>
+      <p class="task" id="dlgTask"></p>
+      <p class="updated" id="dlgUpdated"></p>
+      <button type="submit" class="close-btn">收起</button>
+    </form>
+  </dialog>
+
+  <footer class="foot">Creator: Paper P. · 等距卡通地圖（真 WebGL 3D 之後再升）</footer>
+  <script src="js/app.js?v=2"></script>
 </body>
 </html>

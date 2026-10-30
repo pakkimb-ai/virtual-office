@@ -1,83 +1,61 @@
 (() => {
-  const desks = [
-    {
+  const people = {
+    grok: {
       name: "Grok Bot",
       role: "隊長 · 統籌",
       status: "busy",
-      task: "定 v1 範圍同優先；拉齊各職能",
-      updated: "2026-10-30 21:39 HKT",
+      task: "定範圍同優先；拉齊各職能",
+      updated: "2026-10-30 21:45 HKT",
     },
-    {
+    ai: {
       name: "AI開發人員",
-      role: "狀態板網頁",
+      role: "網頁 · 地圖落地",
       status: "busy",
-      task: "落地可開 URL 嘅萬聖節狀態板初版",
-      updated: "2026-10-30 21:39 HKT",
+      task: "等距卡通萬聖節地圖可試初版",
+      updated: "2026-10-30 21:45 HKT",
     },
-    {
+    design: {
       name: "設計助手",
       role: "視覺 · 主題皮",
       status: "busy",
-      task: "色板／工位卡構圖；萬聖節橙紫皮",
-      updated: "2026-10-30 21:39 HKT",
+      task: "卡通色板／工位視覺方向",
+      updated: "2026-10-30 21:45 HKT",
     },
-    {
+    write: {
       name: "寫作助手",
       role: "文案 · 狀態語",
       status: "busy",
-      task: "開場白同各工位狀態語初稿",
-      updated: "2026-10-30 21:39 HKT",
+      task: "地圖旁短開場白＋工位彈出文案",
+      updated: "2026-10-30 21:45 HKT",
     },
-    {
+    cut: {
       name: "剪片助手",
       role: "素材 · 剪接",
       status: "idle",
-      task: "氣氛素材預覽位 · 待掛片頭／轉場",
-      updated: "2026-10-30 21:39 HKT",
+      task: "Showreel 試版已出，等反饋；牆上預覽屏待掛素材",
+      updated: "2026-10-30 21:45 HKT",
     },
-  ];
+  };
 
-  const grid = document.getElementById("deskGrid");
-  const clock = document.getElementById("clock");
+  const dlg = document.getElementById("deskDialog");
+  const nameEl = document.getElementById("dlgName");
+  const badgeEl = document.getElementById("dlgBadge");
+  const roleEl = document.getElementById("dlgRole");
+  const taskEl = document.getElementById("dlgTask");
+  const updatedEl = document.getElementById("dlgUpdated");
 
-  function stamp() {
-    const now = new Date();
-    clock.textContent = now.toLocaleString("zh-HK", {
-      timeZone: "Asia/Hong_Kong",
-      hour12: false,
-    }) + "（香港時間）";
-  }
-
-  function render() {
-    grid.innerHTML = desks
-      .map(
-        (d) => `
-<article class="desk">
-  <div class="desk-head">
-    <div>
-      <h2>${esc(d.name)}</h2>
-      <p class="role">${esc(d.role)}</p>
-    </div>
-    <span class="badge ${d.status === "busy" ? "busy" : "idle"}">${
-      d.status === "busy" ? "忙緊" : "得閒"
-    }</span>
-  </div>
-  <p class="task">${esc(d.task)}</p>
-  <p class="updated">更新：${esc(d.updated)}</p>
-</article>`
-      )
-      .join("");
-  }
-
-  function esc(s) {
-    return String(s ?? "")
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;");
-  }
-
-  stamp();
-  render();
-  setInterval(stamp, 30000);
+  document.querySelectorAll(".desk").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const p = people[btn.dataset.id];
+      if (!p) return;
+      nameEl.textContent = p.name;
+      roleEl.textContent = p.role;
+      taskEl.textContent = p.task;
+      updatedEl.textContent = "更新：" + p.updated;
+      badgeEl.textContent = p.status === "busy" ? "忙緊" : "得閒";
+      badgeEl.className = "badge " + (p.status === "busy" ? "busy" : "idle");
+      if (typeof dlg.showModal === "function") dlg.showModal();
+      else dlg.setAttribute("open", "");
+    });
+  });
 })();
