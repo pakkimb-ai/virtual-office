@@ -4,50 +4,48 @@ import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 const people = {
   grok: {
     name: "Grok Bot",
-    role: "隊長 · 統籌",
+    role: "隊長",
     status: "busy",
-    task: "定範圍同優先；拉齊各職能",
-    updated: "2026-10-30 21:50 HKT",
+    task: "喺度執緊嘢，陣間先傾～（對齊大家進度）",
+    updated: "2026-10-30 21:55 HKT",
   },
   ai: {
     name: "AI開發人員",
-    role: "網頁 · 3D 落地",
+    role: "開發",
     status: "busy",
-    task: "Three.js 萬聖節辦公室可拖轉初版",
-    updated: "2026-10-30 21:50 HKT",
+    task: "喺度執緊嘢，陣間先傾～（3D 辦公室同枱面擺設）",
+    updated: "2026-10-30 21:55 HKT",
   },
   design: {
     name: "設計助手",
-    role: "視覺 · 主題皮",
+    role: "設計",
     status: "busy",
-    task: "卡通色板／工位視覺方向",
-    updated: "2026-10-30 21:50 HKT",
+    task: "喺度執緊嘢，陣間先傾～（動森風色板同造型）",
+    updated: "2026-10-30 21:55 HKT",
   },
   write: {
     name: "寫作助手",
-    role: "文案 · 狀態語",
+    role: "寫作",
     status: "busy",
-    task: "務實開場白同工位彈出文案",
-    updated: "2026-10-30 21:50 HKT",
+    task: "執緊開場白同狀態短句。",
+    updated: "2026-10-30 21:55 HKT",
   },
   cut: {
     name: "剪片助手",
-    role: "素材 · 剪接",
+    role: "剪片",
     status: "idle",
-    task: "Showreel 試版 ready（41s／1080p）；片頭／轉場 TBD",
-    updated: "2026-10-30 21:50 HKT",
+    task: "得閒喺工位等你。（Showreel 41s ready）",
+    updated: "2026-10-30 21:55 HKT",
   },
 };
 
-const NIGHT = 0x1a1224;
-const FOG = 0x2b1f3d;
 const ORANGE = 0xff7a29;
 const PURPLE = 0x9b6dff;
 const CREAM = 0xf5f0e8;
 const BUSY = 0xff7a29;
 const IDLE = 0x5ecf9a;
-const WOOD = 0xc48a4a;
-const WOOD_DARK = 0x8b5a2b;
+const WOOD = 0xe0b07a;
+const WOOD2 = 0xc48a4a;
 
 const host = document.getElementById("canvasHost");
 const dlg = document.getElementById("deskDialog");
@@ -58,137 +56,119 @@ const taskEl = document.getElementById("dlgTask");
 const updatedEl = document.getElementById("dlgUpdated");
 
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(NIGHT);
-scene.fog = new THREE.Fog(NIGHT, 18, 42);
+scene.background = new THREE.Color(0xcbb8e8);
+scene.fog = new THREE.Fog(0xcbb8e8, 22, 48);
 
-const camera = new THREE.PerspectiveCamera(42, 1, 0.1, 100);
-camera.position.set(9, 8.5, 11);
+const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 100);
+camera.position.set(10, 9, 12);
 
-const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
 renderer.shadowMap.enabled = true;
 host.appendChild(renderer.domElement);
 
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
-controls.target.set(0, 0.6, 0);
-controls.maxPolarAngle = Math.PI * 0.48;
-controls.minDistance = 6;
-controls.maxDistance = 22;
-controls.update();
+controls.target.set(0, 0.5, 0);
+controls.maxPolarAngle = Math.PI * 0.46;
+controls.minDistance = 7;
+controls.maxDistance = 24;
 
-scene.add(new THREE.AmbientLight(0xb8a0ff, 0.55));
-const key = new THREE.DirectionalLight(0xffe0c0, 1.05);
-key.position.set(6, 12, 4);
-key.castShadow = true;
-key.shadow.mapSize.set(1024, 1024);
-scene.add(key);
-const fill = new THREE.PointLight(ORANGE, 0.55, 30);
-fill.position.set(-3, 3, 2);
-scene.add(fill);
-const purpleGlow = new THREE.PointLight(PURPLE, 0.45, 28);
-purpleGlow.position.set(4, 2.5, -3);
-scene.add(purpleGlow);
+scene.add(new THREE.AmbientLight(0xfff0e0, 0.85));
+const sun = new THREE.DirectionalLight(0xffe6c8, 0.9);
+sun.position.set(8, 14, 6);
+sun.castShadow = true;
+scene.add(sun);
+scene.add(new THREE.HemisphereLight(0xffe8d0, 0x9b6dff, 0.45));
+const warm = new THREE.PointLight(ORANGE, 0.5, 28);
+warm.position.set(-2, 3, 2);
+scene.add(warm);
 
-function mat(color, opts = {}) {
-  return new THREE.MeshStandardMaterial({
-    color,
-    roughness: opts.roughness ?? 0.55,
-    metalness: opts.metalness ?? 0.05,
-    emissive: opts.emissive ?? 0x000000,
-    emissiveIntensity: opts.emissiveIntensity ?? 0,
-  });
+function toon(color, emissive = 0x000000, ei = 0) {
+  return new THREE.MeshToonMaterial({ color, emissive, emissiveIntensity: ei });
 }
 
-function addBox(w, h, d, color, x, y, z, opts = {}) {
-  const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat(color, opts));
-  mesh.position.set(x, y, z);
-  mesh.castShadow = true;
-  mesh.receiveShadow = true;
-  scene.add(mesh);
-  return mesh;
-}
-
-// Floor + walls (cartoon room)
-const floor = addBox(14, 0.35, 12, 0x3a2758, 0, 0, 0);
-floor.receiveShadow = true;
-addBox(14, 4.2, 0.35, 0x2a1a42, 0, 2.1, -5.8);
-addBox(0.35, 4.2, 12, 0x241533, -6.85, 2.1, 0);
-addBox(0.35, 4.2, 12, 0x2e1c48, 6.85, 2.1, 0);
-
-// Rug
-addBox(6, 0.08, 4.5, 0x4a3168, 0, 0.22, 0.4, { roughness: 0.9 });
-
-// Preview screen on back wall
-const screen = addBox(2.6, 1.6, 0.12, 0x0e0a18, 1.2, 2.4, -5.55, {
-  emissive: ORANGE,
-  emissiveIntensity: 0.25,
-});
-const screenFrame = addBox(2.9, 1.9, 0.08, PURPLE, 1.2, 2.4, -5.62);
-
-// Pumpkins
-function pumpkin(x, z, s = 1) {
-  const body = new THREE.Mesh(
-    new THREE.SphereGeometry(0.38 * s, 16, 12),
-    mat(ORANGE, { roughness: 0.45 })
+function box(w, h, d, color, x, y, z, parent = scene, opts = {}) {
+  const m = new THREE.Mesh(
+    new THREE.BoxGeometry(w, h, d),
+    toon(color, opts.emissive ?? 0, opts.ei ?? 0)
   );
-  body.position.set(x, 0.45 * s, z);
-  body.scale.y = 0.85;
-  body.castShadow = true;
-  scene.add(body);
-  const stem = addBox(0.08 * s, 0.22 * s, 0.08 * s, 0x3d6b2e, x, 0.72 * s, z);
-  return body;
+  m.position.set(x, y, z);
+  m.castShadow = true;
+  m.receiveShadow = true;
+  parent.add(m);
+  return m;
 }
-pumpkin(-5.2, -4.2, 1.1);
-pumpkin(5.1, -3.8, 0.85);
-pumpkin(-4.6, 3.8, 0.7);
 
-// Floating bats (simple)
+function round(r, color, x, y, z, parent = scene, sy = 1) {
+  const m = new THREE.Mesh(new THREE.SphereGeometry(r, 14, 12), toon(color));
+  m.position.set(x, y, z);
+  m.scale.y = sy;
+  m.castShadow = true;
+  parent.add(m);
+  return m;
+}
+
+// Room — cream floor, soft lavender walls (AC daytime-ish + Halloween tint)
+box(16, 0.4, 14, 0xf0e2c8, 0, 0, 0);
+box(16, 4.5, 0.4, 0xe8d8f8, 0, 2.25, -6.7);
+box(0.4, 4.5, 14, 0xddd0f0, -7.8, 2.25, 0);
+box(0.4, 4.5, 14, 0xd8c8ec, 7.8, 2.25, 0);
+box(7, 0.08, 5, 0xffe0b8, 0, 0.24, 0.3); // rug
+
+// Wall TV for cut preview
+box(3.2, 2.0, 0.15, 0x2a1f14, 2.2, 2.6, -6.45);
+box(2.8, 1.6, 0.12, 0x1a2030, 2.2, 2.6, -6.35, scene, {
+  emissive: ORANGE,
+  ei: 0.2,
+});
+
+// Cute pumpkins & bats
+function pumpkin(x, z, s = 1) {
+  round(0.42 * s, ORANGE, x, 0.42 * s, z, scene, 0.85);
+  box(0.1 * s, 0.2 * s, 0.1 * s, 0x4a8a3a, x, 0.72 * s, z);
+}
+pumpkin(-6.2, -5.2, 1.2);
+pumpkin(6.0, -4.8, 0.9);
+pumpkin(-5.5, 4.5, 0.75);
+
+const bats = [];
 function bat(x, y, z) {
   const g = new THREE.Group();
-  const body = new THREE.Mesh(
-    new THREE.SphereGeometry(0.12, 8, 8),
-    mat(0x1a1224)
-  );
-  const wingL = new THREE.Mesh(
-    new THREE.BoxGeometry(0.45, 0.06, 0.2),
-    mat(0x2b1f3d)
-  );
-  wingL.position.set(-0.28, 0, 0);
-  wingL.rotation.z = 0.35;
-  const wingR = wingL.clone();
-  wingR.position.x = 0.28;
-  wingR.rotation.z = -0.35;
-  g.add(body, wingL, wingR);
+  round(0.12, 0x3a2a55, 0, 0, 0, g);
+  box(0.5, 0.06, 0.22, 0x4a3a6a, -0.3, 0, 0, g);
+  box(0.5, 0.06, 0.22, 0x4a3a6a, 0.3, 0, 0, g);
   g.position.set(x, y, z);
   scene.add(g);
-  return g;
+  bats.push(g);
 }
-const bats = [bat(-2, 3.6, -4), bat(3.2, 3.2, -3.5), bat(0.5, 3.8, -2)];
+bat(-2.5, 3.8, -5);
+bat(1.5, 3.5, -4.2);
 
 const clickables = [];
 
-function makeLabelTexture(text) {
+function labelSprite(text) {
   const c = document.createElement("canvas");
-  c.width = 256;
-  c.height = 64;
+  c.width = 320;
+  c.height = 80;
   const ctx = c.getContext("2d");
-  ctx.clearRect(0, 0, 256, 64);
-  ctx.fillStyle = "rgba(26,18,36,0.9)";
-  roundRect(ctx, 8, 12, 240, 40, 18);
+  ctx.fillStyle = "rgba(245,240,232,0.95)";
+  roundRect(ctx, 20, 16, 280, 48, 24);
   ctx.fill();
-  ctx.strokeStyle = "rgba(155,109,255,0.55)";
-  ctx.lineWidth = 3;
-  roundRect(ctx, 8, 12, 240, 40, 18);
+  ctx.strokeStyle = "#5a3d82";
+  ctx.lineWidth = 5;
+  roundRect(ctx, 20, 16, 280, 48, 24);
   ctx.stroke();
-  ctx.fillStyle = "#F5F0E8";
-  ctx.font = "bold 22px sans-serif";
+  ctx.fillStyle = "#2a1f14";
+  ctx.font = "bold 26px sans-serif";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.fillText(text, 128, 32);
+  ctx.fillText(text, 160, 40);
   const tex = new THREE.CanvasTexture(c);
   tex.colorSpace = THREE.SRGBColorSpace;
-  return tex;
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthTest: false }));
+  sp.scale.set(2.1, 0.52, 1);
+  return sp;
 }
 function roundRect(ctx, x, y, w, h, r) {
   ctx.beginPath();
@@ -200,80 +180,100 @@ function roundRect(ctx, x, y, w, h, r) {
   ctx.closePath();
 }
 
-function desk(id, x, z, label) {
-  const group = new THREE.Group();
-  group.position.set(x, 0, z);
-  group.userData = { id };
-
-  const top = new THREE.Mesh(
-    new THREE.BoxGeometry(1.35, 0.14, 0.8),
-    mat(WOOD, { roughness: 0.5 })
-  );
-  top.position.y = 0.78;
-  top.castShadow = true;
-  const legMat = mat(WOOD_DARK);
-  [[-0.55, -0.28], [0.55, -0.28], [-0.55, 0.28], [0.55, 0.28]].forEach(([lx, lz]) => {
-    const leg = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.72, 0.1), legMat);
-    leg.position.set(lx, 0.36, lz);
-    leg.castShadow = true;
-    group.add(leg);
+function baseDesk(parent) {
+  box(1.6, 0.16, 0.95, WOOD, 0, 0.82, 0, parent);
+  [[-0.65, -0.35], [0.65, -0.35], [-0.65, 0.35], [0.65, 0.35]].forEach(([lx, lz]) => {
+    box(0.12, 0.78, 0.12, WOOD2, lx, 0.39, lz, parent);
   });
-  group.add(top);
-
-  const chair = new THREE.Mesh(
-    new THREE.BoxGeometry(0.55, 0.45, 0.55),
-    mat(PURPLE, { roughness: 0.4 })
-  );
-  chair.position.set(0, 0.4, 0.75);
-  chair.castShadow = true;
-  group.add(chair);
-
-  const p = people[id];
-  const lampColor = p.status === "busy" ? BUSY : IDLE;
-  const bulb = new THREE.Mesh(
-    new THREE.SphereGeometry(0.14, 12, 12),
-    mat(lampColor, {
-      emissive: lampColor,
-      emissiveIntensity: 0.85,
-      roughness: 0.3,
-    })
-  );
-  bulb.position.set(0.45, 1.15, 0);
-  group.add(bulb);
-  const light = new THREE.PointLight(lampColor, 0.65, 4.5);
-  light.position.copy(bulb.position);
-  group.add(light);
-
-  const spriteMat = new THREE.SpriteMaterial({
-    map: makeLabelTexture(label),
-    transparent: true,
-    depthTest: false,
-  });
-  const sprite = new THREE.Sprite(spriteMat);
-  sprite.position.set(0, 1.55, 0);
-  sprite.scale.set(1.8, 0.45, 1);
-  group.add(sprite);
-
-  // invisible hit box
-  const hit = new THREE.Mesh(
-    new THREE.BoxGeometry(1.6, 1.6, 1.6),
-    new THREE.MeshBasicMaterial({ visible: false })
-  );
-  hit.position.y = 0.8;
-  hit.userData = { id };
-  group.add(hit);
-  clickables.push(hit);
-
-  scene.add(group);
-  return { group, bulb, lampColor };
+  // chubby chair
+  box(0.62, 0.5, 0.62, PURPLE, 0, 0.42, 0.85, parent);
+  box(0.62, 0.55, 0.12, 0x7a52cc, 0, 0.85, 1.08, parent);
 }
 
-const desks = [
-  desk("grok", -3.2, -1.2, "Grok Bot"),
-  desk("ai", 0.2, -2.4, "AI開發"),
-  desk("design", 3.4, -1.0, "設計"),
-  desk("write", -2.4, 2.2, "寫作"),
-  desk("cut", 2.6, 2.4, "剪片"),
+function lamp(parent, status) {
+  const col = status === "busy" ? BUSY : IDLE;
+  const bulb = round(0.15, col, 0.55, 1.25, -0.15, parent);
+  bulb.material.emissive = new THREE.Color(col);
+  bulb.material.emissiveIntensity = 0.9;
+  const light = new THREE.PointLight(col, 0.55, 4);
+  light.position.set(0.55, 1.25, -0.15);
+  parent.add(light);
+  return bulb;
+}
+
+function propsFor(id, parent) {
+  if (id === "ai") {
+    // monitor + keyboard + laptop
+    box(0.9, 0.55, 0.08, 0x2a2a35, 0, 1.25, -0.25, parent);
+    box(0.75, 0.42, 0.04, 0x7ec8ff, 0, 1.25, -0.2, parent, { emissive: 0x2266aa, ei: 0.35 });
+    box(0.2, 0.35, 0.12, 0x444450, 0, 0.98, -0.15, parent);
+    box(0.85, 0.05, 0.3, 0x333340, 0, 0.92, 0.15, parent); // keyboard
+    box(0.55, 0.04, 0.38, 0x555566, -0.45, 0.95, 0.05, parent); // laptop base
+    box(0.55, 0.35, 0.03, 0x88ccee, -0.45, 1.12, -0.12, parent, { emissive: 0x225577, ei: 0.25 });
+  } else if (id === "write") {
+    // paper stack + pen + desk lamp + coffee
+    box(0.45, 0.08, 0.55, CREAM, -0.25, 0.95, 0, parent);
+    box(0.42, 0.06, 0.52, 0xfff8e8, -0.22, 1.02, 0.02, parent);
+    box(0.4, 0.05, 0.5, CREAM, -0.2, 1.08, 0.04, parent);
+    box(0.04, 0.04, 0.35, 0x2a1f14, 0.25, 0.95, 0.1, parent); // pen
+    box(0.08, 0.35, 0.08, 0xffd090, 0.5, 1.1, -0.25, parent); // lamp pole
+    round(0.16, 0xffe0a0, 0.5, 1.32, -0.25, parent);
+    round(0.12, 0xc48a4a, 0.35, 0.98, 0.28, parent); // coffee
+    box(0.08, 0.1, 0.08, CREAM, 0.35, 1.08, 0.28, parent);
+  } else if (id === "design") {
+    // tablet + color swatches
+    box(0.7, 0.04, 0.5, 0x333340, 0.1, 0.94, 0.05, parent);
+    box(0.62, 0.02, 0.42, 0xf0e8ff, 0.1, 0.97, 0.05, parent);
+    box(0.06, 0.08, 0.06, ORANGE, -0.55, 0.96, -0.2, parent);
+    box(0.06, 0.08, 0.06, PURPLE, -0.45, 0.96, -0.2, parent);
+    box(0.06, 0.08, 0.06, 0x5ecf9a, -0.35, 0.96, -0.2, parent);
+    box(0.06, 0.08, 0.06, 0xffd166, -0.25, 0.96, -0.2, parent);
+    box(0.05, 0.28, 0.05, 0x888899, 0.45, 1.05, 0.2, parent); // stylus
+  } else if (id === "cut") {
+    // dual screens + clapper
+    box(0.7, 0.45, 0.06, 0x2a2a35, -0.35, 1.2, -0.25, parent);
+    box(0.55, 0.32, 0.03, 0xff9955, -0.35, 1.2, -0.2, parent, { emissive: ORANGE, ei: 0.3 });
+    box(0.7, 0.45, 0.06, 0x2a2a35, 0.4, 1.2, -0.2, parent);
+    box(0.55, 0.32, 0.03, 0x66aadd, 0.4, 1.2, -0.15, parent, { emissive: 0x226688, ei: 0.3 });
+    box(0.4, 0.06, 0.28, 0x1a1a1a, 0, 0.95, 0.2, parent); // clapper base
+    box(0.4, 0.05, 0.08, CREAM, 0, 1.0, 0.05, parent);
+  } else if (id === "grok") {
+    // clipboard / board + walkie
+    box(0.55, 0.7, 0.05, WOOD2, -0.35, 1.25, -0.2, parent);
+    box(0.45, 0.58, 0.03, CREAM, -0.35, 1.25, -0.16, parent);
+    round(0.14, 0x555566, 0.4, 1.0, 0.15, parent); // walkie body
+    box(0.05, 0.22, 0.05, 0x333340, 0.4, 1.2, 0.15, parent); // antenna
+    box(0.35, 0.08, 0.35, PURPLE, 0.15, 0.95, -0.25, parent); // sticky notes block
+  }
+}
+
+function makeDesk(id, x, z, label) {
+  const g = new THREE.Group();
+  g.position.set(x, 0, z);
+  baseDesk(g);
+  propsFor(id, g);
+  const bulb = lamp(g, people[id].status);
+  const sp = labelSprite(label);
+  sp.position.set(0, 1.75, 0);
+  g.add(sp);
+  const hit = new THREE.Mesh(
+    new THREE.BoxGeometry(1.9, 1.9, 1.9),
+    new THREE.MeshBasicMaterial({ visible: false })
+  );
+  hit.position.y = 0.9;
+  hit.userData = { id };
+  g.add(hit);
+  clickables.push(hit);
+  scene.add(g);
+  return { bulb, status: people[id].status };
+}
+
+const deskMeta = [
+  makeDesk("grok", -3.5, -1.5, "Grok Bot"),
+  makeDesk("ai", 0.3, -2.6, "AI開發"),
+  makeDesk("design", 3.6, -1.2, "設計"),
+  makeDesk("write", -2.6, 2.4, "寫作"),
+  makeDesk("cut", 2.8, 2.5, "剪片"),
 ];
 
 function openPerson(id) {
@@ -285,58 +285,42 @@ function openPerson(id) {
   updatedEl.textContent = "更新：" + p.updated;
   badgeEl.textContent = p.status === "busy" ? "忙緊" : "得閒";
   badgeEl.className = "badge " + (p.status === "busy" ? "busy" : "idle");
-  if (typeof dlg.showModal === "function") dlg.showModal();
-  else dlg.setAttribute("open", "");
+  dlg.showModal?.() || dlg.setAttribute("open", "");
 }
 
 const raycaster = new THREE.Raycaster();
 const pointer = new THREE.Vector2();
 let moved = false;
-
-function setPointer(event) {
-  const rect = renderer.domElement.getBoundingClientRect();
-  const clientX = event.clientX ?? event.changedTouches?.[0]?.clientX;
-  const clientY = event.clientY ?? event.changedTouches?.[0]?.clientY;
-  pointer.x = ((clientX - rect.left) / rect.width) * 2 - 1;
-  pointer.y = -((clientY - rect.top) / rect.height) * 2 + 1;
-}
-
-renderer.domElement.addEventListener("pointerdown", () => {
-  moved = false;
-});
-renderer.domElement.addEventListener("pointermove", () => {
-  moved = true;
-});
+renderer.domElement.addEventListener("pointerdown", () => { moved = false; });
+renderer.domElement.addEventListener("pointermove", () => { moved = true; });
 renderer.domElement.addEventListener("pointerup", (e) => {
   if (moved) return;
-  setPointer(e);
+  const rect = renderer.domElement.getBoundingClientRect();
+  pointer.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+  pointer.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
   raycaster.setFromCamera(pointer, camera);
   const hits = raycaster.intersectObjects(clickables, false);
   if (hits[0]?.object?.userData?.id) openPerson(hits[0].object.userData.id);
 });
 
 function resize() {
-  const w = host.clientWidth;
-  const h = host.clientHeight;
+  const w = host.clientWidth, h = host.clientHeight;
   camera.aspect = w / h;
   camera.updateProjectionMatrix();
   renderer.setSize(w, h, false);
 }
 resize();
-window.addEventListener("resize", resize);
+addEventListener("resize", resize);
 
 const clock = new THREE.Clock();
 function animate() {
   requestAnimationFrame(animate);
   const t = clock.getElapsedTime();
   bats.forEach((b, i) => {
-    b.position.y = 3.2 + Math.sin(t * 1.4 + i) * 0.25;
-    b.rotation.y = Math.sin(t * 0.8 + i) * 0.4;
+    b.position.y = 3.4 + Math.sin(t * 1.3 + i) * 0.2;
   });
-  desks.forEach((d, i) => {
-    if (d.lampColor === BUSY) {
-      d.bulb.material.emissiveIntensity = 0.55 + Math.sin(t * 3 + i) * 0.3;
-    }
+  deskMeta.forEach((d, i) => {
+    if (d.status === "busy") d.bulb.material.emissiveIntensity = 0.55 + Math.sin(t * 2.8 + i) * 0.3;
   });
   controls.update();
   renderer.render(scene, camera);
