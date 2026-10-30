@@ -202,48 +202,75 @@ function lamp(parent, status) {
 }
 
 function propsFor(id, parent) {
+  // 1 large + 2 medium + 1–2 small; Halloween mini at corner
+  const tip = (sx, sy, sz) => box(0.14, 0.12, 0.14, ORANGE, sx, sy, sz, parent);
+
   if (id === "ai") {
-    // monitor + keyboard + laptop
-    box(0.9, 0.55, 0.08, 0x2a2a35, 0, 1.25, -0.25, parent);
-    box(0.75, 0.42, 0.04, 0x7ec8ff, 0, 1.25, -0.2, parent, { emissive: 0x2266aa, ei: 0.35 });
-    box(0.2, 0.35, 0.12, 0x444450, 0, 0.98, -0.15, parent);
-    box(0.85, 0.05, 0.3, 0x333340, 0, 0.92, 0.15, parent); // keyboard
-    box(0.55, 0.04, 0.38, 0x555566, -0.45, 0.95, 0.05, parent); // laptop base
-    box(0.55, 0.35, 0.03, 0x88ccee, -0.45, 1.12, -0.12, parent, { emissive: 0x225577, ei: 0.25 });
+    // large: dual monitors
+    box(0.72, 0.5, 0.07, 0x2a2a35, -0.38, 1.22, -0.28, parent);
+    box(0.58, 0.36, 0.03, 0x7ec8ff, -0.38, 1.22, -0.23, parent, { emissive: 0x2266aa, ei: 0.35 });
+    box(0.72, 0.5, 0.07, 0x2a2a35, 0.4, 1.22, -0.22, parent);
+    box(0.58, 0.36, 0.03, 0x9bffce, 0.4, 1.22, -0.17, parent, { emissive: 0x226644, ei: 0.3 });
+    // medium: keyboard + code window block
+    box(0.9, 0.05, 0.32, 0x333340, 0, 0.93, 0.18, parent);
+    box(0.4, 0.28, 0.04, 0x1e2430, 0.55, 1.15, 0.15, parent, { emissive: 0x33ff88, ei: 0.2 });
+    // small: coffee + mini pumpkin
+    round(0.11, 0xc48a4a, -0.55, 0.98, 0.28, parent);
+    tip(0.65, 0.96, 0.32);
   } else if (id === "write") {
-    // paper stack + pen + desk lamp + coffee
-    box(0.45, 0.08, 0.55, CREAM, -0.25, 0.95, 0, parent);
-    box(0.42, 0.06, 0.52, 0xfff8e8, -0.22, 1.02, 0.02, parent);
-    box(0.4, 0.05, 0.5, CREAM, -0.2, 1.08, 0.04, parent);
-    box(0.04, 0.04, 0.35, 0x2a1f14, 0.25, 0.95, 0.1, parent); // pen
-    box(0.08, 0.35, 0.08, 0xffd090, 0.5, 1.1, -0.25, parent); // lamp pole
-    round(0.16, 0xffe0a0, 0.5, 1.32, -0.25, parent);
-    round(0.12, 0xc48a4a, 0.35, 0.98, 0.28, parent); // coffee
-    box(0.08, 0.1, 0.08, CREAM, 0.35, 1.08, 0.28, parent);
+    // large: open notebook / papers
+    box(0.7, 0.05, 0.55, CREAM, -0.1, 0.94, 0.05, parent);
+    box(0.32, 0.03, 0.5, 0xfff8e8, -0.28, 0.98, 0.05, parent);
+    box(0.32, 0.03, 0.5, 0xfff8e8, 0.08, 0.98, 0.05, parent);
+    // medium: desk lamp + pen cup
+    box(0.08, 0.38, 0.08, 0xffd090, 0.55, 1.12, -0.25, parent);
+    round(0.18, 0xffe0a0, 0.55, 1.38, -0.25, parent);
+    box(0.16, 0.18, 0.16, PURPLE, -0.55, 1.0, -0.2, parent);
+    box(0.03, 0.22, 0.03, 0x2a1f14, -0.55, 1.15, -0.2, parent);
+    // small: tea + mini pumpkin
+    round(0.1, 0xe8d0a8, 0.4, 0.98, 0.3, parent);
+    tip(-0.55, 0.96, 0.3);
   } else if (id === "design") {
-    // tablet + color swatches
-    box(0.7, 0.04, 0.5, 0x333340, 0.1, 0.94, 0.05, parent);
-    box(0.62, 0.02, 0.42, 0xf0e8ff, 0.1, 0.97, 0.05, parent);
-    box(0.06, 0.08, 0.06, ORANGE, -0.55, 0.96, -0.2, parent);
-    box(0.06, 0.08, 0.06, PURPLE, -0.45, 0.96, -0.2, parent);
-    box(0.06, 0.08, 0.06, 0x5ecf9a, -0.35, 0.96, -0.2, parent);
-    box(0.06, 0.08, 0.06, 0xffd166, -0.25, 0.96, -0.2, parent);
-    box(0.05, 0.28, 0.05, 0x888899, 0.45, 1.05, 0.2, parent); // stylus
+    // large: drawing tablet
+    box(0.85, 0.05, 0.58, 0x333340, 0.05, 0.94, 0.05, parent);
+    box(0.72, 0.02, 0.48, 0xf0e8ff, 0.05, 0.97, 0.05, parent);
+    // medium: moodboard + marker cup
+    box(0.55, 0.4, 0.05, WOOD2, -0.55, 1.2, -0.25, parent);
+    box(0.45, 0.32, 0.03, CREAM, -0.55, 1.2, -0.21, parent);
+    box(0.06, 0.08, 0.06, ORANGE, -0.65, 1.05, -0.05, parent);
+    box(0.06, 0.08, 0.06, PURPLE, -0.55, 1.05, -0.05, parent);
+    box(0.06, 0.08, 0.06, 0x5ecf9a, -0.45, 1.05, -0.05, parent);
+    box(0.18, 0.16, 0.18, 0x8888aa, 0.55, 1.0, -0.2, parent);
+    // small: stylus + pumpkin lamp vibe
+    box(0.05, 0.28, 0.05, 0x666677, 0.5, 1.08, 0.25, parent);
+    tip(0.6, 0.96, 0.35);
   } else if (id === "cut") {
-    // dual screens + clapper
-    box(0.7, 0.45, 0.06, 0x2a2a35, -0.35, 1.2, -0.25, parent);
-    box(0.55, 0.32, 0.03, 0xff9955, -0.35, 1.2, -0.2, parent, { emissive: ORANGE, ei: 0.3 });
-    box(0.7, 0.45, 0.06, 0x2a2a35, 0.4, 1.2, -0.2, parent);
-    box(0.55, 0.32, 0.03, 0x66aadd, 0.4, 1.2, -0.15, parent, { emissive: 0x226688, ei: 0.3 });
-    box(0.4, 0.06, 0.28, 0x1a1a1a, 0, 0.95, 0.2, parent); // clapper base
-    box(0.4, 0.05, 0.08, CREAM, 0, 1.0, 0.05, parent);
+    // large: timeline-ish wide screen
+    box(1.15, 0.55, 0.08, 0x2a2a35, 0, 1.25, -0.28, parent);
+    box(1.0, 0.4, 0.04, 0xff9955, 0, 1.28, -0.22, parent, { emissive: ORANGE, ei: 0.28 });
+    box(0.9, 0.08, 0.04, 0x66aadd, 0, 1.08, -0.2, parent, { emissive: 0x226688, ei: 0.25 });
+    // medium: headphones + camera
+    box(0.45, 0.12, 0.35, 0x444455, -0.5, 0.98, 0.2, parent);
+    round(0.12, 0x333344, -0.68, 1.0, 0.2, parent);
+    round(0.12, 0x333344, -0.32, 1.0, 0.2, parent);
+    box(0.28, 0.18, 0.22, 0x222230, 0.5, 1.0, 0.22, parent);
+    // small: tape canister + pumpkin
+    round(0.1, 0x886644, 0.55, 0.98, -0.05, parent);
+    tip(-0.6, 0.96, -0.15);
   } else if (id === "grok") {
-    // clipboard / board + walkie
-    box(0.55, 0.7, 0.05, WOOD2, -0.35, 1.25, -0.2, parent);
-    box(0.45, 0.58, 0.03, CREAM, -0.35, 1.25, -0.16, parent);
-    round(0.14, 0x555566, 0.4, 1.0, 0.15, parent); // walkie body
-    box(0.05, 0.22, 0.05, 0x333340, 0.4, 1.2, 0.15, parent); // antenna
-    box(0.35, 0.08, 0.35, PURPLE, 0.15, 0.95, -0.25, parent); // sticky notes block
+    // large: whiteboard / task board
+    box(0.85, 0.75, 0.06, WOOD2, -0.15, 1.3, -0.28, parent);
+    box(0.72, 0.62, 0.04, CREAM, -0.15, 1.3, -0.24, parent);
+    box(0.12, 0.1, 0.02, ORANGE, -0.35, 1.45, -0.2, parent);
+    box(0.12, 0.1, 0.02, PURPLE, -0.18, 1.45, -0.2, parent);
+    box(0.12, 0.1, 0.02, 0x5ecf9a, -0.01, 1.45, -0.2, parent);
+    // medium: walkie + sticky stack
+    round(0.14, 0x555566, 0.5, 1.0, 0.1, parent);
+    box(0.05, 0.24, 0.05, 0x333340, 0.5, 1.2, 0.1, parent);
+    box(0.28, 0.12, 0.28, PURPLE, 0.35, 0.96, -0.2, parent);
+    // small: bat + pumpkin command corner
+    box(0.28, 0.08, 0.16, 0x3a2a55, 0.55, 0.96, 0.32, parent);
+    tip(-0.55, 0.96, 0.3);
   }
 }
 
