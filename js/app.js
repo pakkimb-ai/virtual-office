@@ -3,16 +3,16 @@ import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.js";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 
-const HKT = "2026-10-30 23:55 HKT";
+const HKT = "2026-10-31 00:10 HKT";
 
 const people = {
   grok: {
-    name: "Grok Bot",
-    role: "隊長",
+    name: "Grok Bot 隊長",
+    role: "隊長／QC",
     status: "busy",
-    motto: "對齊完先開下一檔。",
-    task: "對齊大家進度同下一版優先。",
-    done: "定咗真 3D＋動森方向。",
+    motto: "對齊完、核對完，先開下一關。",
+    task: "統籌、QC、審批同匯報。",
+    done: "定咗四人崗位。",
     color: 0xff8a1f,
     updated: HKT,
   },
@@ -21,40 +21,29 @@ const people = {
     role: "開發",
     status: "busy",
     motto: "可開先上，再執細節。",
-    task: "跟 ACNH Office Wall 提升道具級像真度。",
-    done: "上線可拖轉 3D 辦公室。",
+    task: "全部程式編寫同開發落地。",
+    done: "辦公室同工具站上線。",
     color: 0x5b8def,
     updated: HKT,
   },
   design: {
     name: "設計助手",
-    role: "設計",
+    role: "美術",
     status: "busy",
-    motto: "色先定，版面就跟。",
-    task: "動森色板同工位層級。",
-    done: "交咗橙紫 token 同道具清單。",
+    motto: "2D／3D 先定風格再出稿。",
+    task: "所有美術 2D／3D 創作。",
+    done: "動森風色板同道具規格已交。",
     color: 0xf78fb3,
     updated: HKT,
   },
   write: {
-    name: "寫作助手",
-    role: "寫作",
+    name: "策劃助手",
+    role: "策劃",
     status: "busy",
-    motto: "稿未定，字先穩。",
-    task: "執緊開場白",
-    done: "務實開場白已交",
+    motto: "企劃未定，方向先穩。",
+    task: "策劃、level design、文案同諗頭。",
+    done: "崗位文案框架已定。",
     color: 0x6bcb77,
-    updated: HKT,
-  },
-  cut: {
-    name: "剪片助手",
-    role: "剪片",
-    status: "idle",
-    motto: "素材齊，先剪一條睇。",
-    task: "得閒喺工位等你。",
-    done: "Showreel 試版已交，等反饋。",
-    color: 0x9b5cff,
-    link: "https://www.youtube.com/results?search_query=animal+crossing+halloween",
     updated: HKT,
   },
 };
@@ -429,7 +418,7 @@ function designScreenTex() {
     });
   }, 256, 160);
 }
-/** Cut — left timeline */
+/** Shared / timeline UI (wall or desk) */
 function timelineScreenTex() {
   return canvasTex((ctx, w, h) => {
     ctx.fillStyle = "#1a1a24";
@@ -466,7 +455,7 @@ function timelineScreenTex() {
     ctx.fillText("00:12  timeline", 48, h - 8);
   }, 256, 144);
 }
-/** Cut — right preview */
+/** Shared preview UI */
 function previewScreenTex() {
   return canvasTex((ctx, w, h) => {
     const g = ctx.createLinearGradient(0, 0, w, h);
@@ -661,7 +650,7 @@ const clockFace = new THREE.Mesh(
 clockFace.position.set(1.9, 4.05, -6.46);
 scene.add(clockFace);
 
-// Cut wall preview (with UI texture)
+// Shared wall preview screen
 rbox(1.7, 1.05, 0.08, 0x3a4050, 5.0, 3.5, -6.55, scene, 0.04);
 const wallPreview = new THREE.Mesh(
   new THREE.PlaneGeometry(1.5, 0.88),
@@ -881,16 +870,6 @@ async function deskSet(id, x, z, label) {
     const plant = await loadKay("cactus_medium_A");
     placeModel(plant, g, 0.7, topY, -0.25, 0.4, 0);
     deskCup(g, -0.7, topY + 0.07, 0.3);
-  } else if (id === "cut") {
-    await kenMonitor(g, -0.4, topY, -0.32, timelineScreenTex(), 0.2);
-    await kenMonitor(g, 0.45, topY, -0.32, previewScreenTex(), 0.2);
-    clapboard(g, -0.7, topY + 0.18, 0.25);
-    // headphones (simple)
-    cyl(0.12, 0.12, 0.04, 0x3a4050, 0.7, topY + 0.08, 0.25, g, 12);
-    rbox(0.28, 0.04, 0.04, 0x3a4050, 0.7, topY + 0.18, 0.25, g, 0.02);
-    cyl(0.05, 0.05, 0.08, 0x9b5cff, 0.56, topY + 0.1, 0.25, g, 10);
-    cyl(0.05, 0.05, 0.08, 0x9b5cff, 0.84, topY + 0.1, 0.25, g, 10);
-    deskCup(g, 0.15, topY + 0.07, 0.35);
   } else if (id === "grok") {
     const mini = new THREE.Mesh(
       new RoundedBoxGeometry(0.55, 0.7, 0.06, 2, 0.03),
@@ -1043,11 +1022,11 @@ animate();
 (async function boot() {
   try {
     await decorateWalls();
-    await deskSet("grok", -3.6, -1.6, "Grok Bot");
-    await deskSet("ai", 0.2, -2.9, "AI開發");
-    await deskSet("design", 3.7, -1.3, "設計");
-    await deskSet("write", -2.8, 2.55, "寫作");
-    await deskSet("cut", 2.9, 2.65, "剪片");
+    // Four desks around the carpet (corners)
+    await deskSet("grok", -3.5, -2.1, "隊長");
+    await deskSet("ai", 3.5, -2.1, "開發");
+    await deskSet("design", 3.5, 2.5, "美術");
+    await deskSet("write", -3.5, 2.5, "策劃");
   } catch (err) {
     console.error("Asset load failed", err);
   }
