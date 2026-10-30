@@ -3,7 +3,7 @@ import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.js";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 
-const HKT = "2026-10-31 00:12 HKT";
+const HKT = "2026-10-31 00:25 HKT";
 
 const people = {
   grok: {
@@ -17,7 +17,7 @@ const people = {
     updated: HKT,
   },
   ai: {
-    name: "AI開發人員",
+    name: "開發人員",
     role: "開發",
     status: "busy",
     motto: "可開先上，再執細節。",
@@ -40,8 +40,8 @@ const people = {
     name: "策劃助手",
     role: "策劃",
     status: "busy",
-    motto: "企劃未定，方向先穩。",
-    task: "策劃、level design、文案同諗頭。",
+    motto: "先定玩法，再落細節。",
+    task: "企劃／level design／文案",
     done: "崗位文案框架已定。",
     color: 0x6bcb77,
     updated: HKT,
@@ -53,7 +53,6 @@ const dlg = document.getElementById("deskDialog");
 const els = {
   name: document.getElementById("dlgName"),
   badge: document.getElementById("dlgBadge"),
-  role: document.getElementById("dlgRole"),
   motto: document.getElementById("dlgMotto"),
   task: document.getElementById("dlgTask"),
 };
@@ -961,7 +960,7 @@ function openPerson(id) {
   const p = people[id];
   if (!p) return;
   els.name.textContent = p.name;
-  els.role.textContent = p.role;
+  if (els.role) els.role.textContent = p.role;
   els.motto.textContent = "「" + p.motto + "」";
   els.task.textContent = p.task;
   els.badge.textContent = p.status === "busy" ? "忙緊" : "得閒";
