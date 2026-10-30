@@ -3,38 +3,47 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="theme-color" content="#2B1F3D" />
-  <title>虛擬辦公室 🎃 · 動森風 3D</title>
-  <link rel="stylesheet" href="css/styles.css?v=6" />
+  <meta name="theme-color" content="#7ec8e3" />
+  <title>虛擬辦公室 · 動森風</title>
+  <link rel="stylesheet" href="css/styles.css?v=7" />
 </head>
 <body>
   <header class="top">
     <div class="title-wrap">
       <h1>虛擬辦公室 <span class="emoji">🎃</span></h1>
-      <span class="season-pill">萬聖節 · 動森風 3D</span>
+      <span class="season-pill">參考 Animal Crossing · 萬聖節小裝飾</span>
     </div>
-    <p class="blurb">歡迎返辦公室——萬聖節主題，撳工位睇大家做緊咩。拖曳旋轉 · 滾輪縮放</p>
+    <p class="blurb">歡迎返辦公室——萬聖節主題，撳工位睇大家做緊咩。</p>
   </header>
 
   <div class="stage-wrap">
-    <div id="canvasHost" class="canvas-host" role="img" aria-label="3D 動森風萬聖節辦公室"></div>
-    <p class="hint">撳發光工位睇狀態 · 每張枱有專屬擺設</p>
+    <div class="toolbar">
+      <button type="button" id="btnReset" class="tool-btn">重置視角</button>
+    </div>
+    <div id="canvasHost" class="canvas-host" role="img" aria-label="動森風 3D 辦公室"></div>
+    <p class="hint">拖曳旋轉 · 滾輪縮放 · 撳角色／枱睇狀態</p>
   </div>
 
-  <dialog id="deskDialog" class="desk-dialog">
+  <dialog id="deskDialog" class="bubble">
     <form method="dialog">
+      <div class="bubble-tail" aria-hidden="true"></div>
+      <p class="motto" id="dlgMotto"></p>
       <header>
         <h2 id="dlgName">—</h2>
         <span id="dlgBadge" class="badge">—</span>
       </header>
       <p class="role" id="dlgRole"></p>
+      <p class="label">而家做緊咩</p>
       <p class="task" id="dlgTask"></p>
+      <p class="label">今日做咗咩</p>
+      <p class="done" id="dlgDone"></p>
       <p class="updated" id="dlgUpdated"></p>
-      <button type="submit" class="close-btn">好呀</button>
+      <a id="dlgLink" class="showreel" hidden href="#" target="_blank" rel="noopener">播 Showreel 試片</a>
+      <button type="submit" class="close-btn">好呀～</button>
     </form>
   </dialog>
 
-  <footer class="foot">Creator: Paper P. · Three.js · 動森風卡通辦公室</footer>
+  <footer class="foot">Creator: Paper P. · 參考 ACNH 室內：淺木地板、奶油牆、圓潤傢俬、柔光</footer>
   <script type="importmap">
   {
     "imports": {
@@ -43,6 +52,6 @@
     }
   }
   </script>
-  <script type="module" src="js/app.js?v=6"></script>
+  <script type="module" src="js/app.js?v=7"></script>
 </body>
 </html>

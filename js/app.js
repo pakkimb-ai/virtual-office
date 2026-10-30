@@ -1,107 +1,179 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.js";
 
 const people = {
   grok: {
     name: "Grok Bot",
     role: "隊長",
     status: "busy",
-    task: "喺度執緊嘢，陣間先傾～（對齊大家進度）",
-    updated: "2026-10-30 21:55 HKT",
+    motto: "對齊完先再開下一檔。",
+    task: "對齊大家進度同下一版優先。",
+    done: "定咗真 3D＋動森方向。",
+    color: 0xffb347,
+    updated: "2026-10-30 22:40 HKT",
   },
   ai: {
     name: "AI開發人員",
     role: "開發",
     status: "busy",
-    task: "喺度執緊嘢，陣間先傾～（3D 辦公室同枱面擺設）",
-    updated: "2026-10-30 21:55 HKT",
+    motto: "可開先上，再執細節。",
+    task: "跟 ACNH reference 重做辦公室外觀。",
+    done: "上線可拖轉 3D 辦公室。",
+    color: 0x7ec8ff,
+    updated: "2026-10-30 22:40 HKT",
   },
   design: {
     name: "設計助手",
     role: "設計",
     status: "busy",
-    task: "喺度執緊嘢，陣間先傾～（動森風色板同造型）",
-    updated: "2026-10-30 21:55 HKT",
+    motto: "色先定，版面就跟。",
+    task: "動森色板同工位層級。",
+    done: "交咗橙紫 token 同道具清單。",
+    color: 0xb58cff,
+    updated: "2026-10-30 22:40 HKT",
   },
   write: {
     name: "寫作助手",
     role: "寫作",
     status: "busy",
+    motto: "稿未定，字先穩。",
     task: "執緊開場白同狀態短句。",
-    updated: "2026-10-30 21:55 HKT",
+    done: "交咗務實開場白＋口頭禪。",
+    color: 0xff9ec8,
+    updated: "2026-10-30 22:40 HKT",
   },
   cut: {
     name: "剪片助手",
     role: "剪片",
     status: "idle",
-    task: "得閒喺工位等你。（Showreel 41s ready）",
-    updated: "2026-10-30 21:55 HKT",
+    motto: "素材齊，先剪一條睇。",
+    task: "得閒喺工位等你。",
+    done: "Showreel 試版已交，等反饋。",
+    color: 0x6fd6a0,
+    link: "https://www.youtube.com/results?search_query=animal+crossing+halloween",
+    updated: "2026-10-30 22:40 HKT",
   },
 };
 
-const ORANGE = 0xff7a29;
-const PURPLE = 0x9b6dff;
-const CREAM = 0xf5f0e8;
-const BUSY = 0xff7a29;
-const IDLE = 0x5ecf9a;
-const WOOD = 0xe0b07a;
-const WOOD2 = 0xc48a4a;
-
 const host = document.getElementById("canvasHost");
 const dlg = document.getElementById("deskDialog");
-const nameEl = document.getElementById("dlgName");
-const badgeEl = document.getElementById("dlgBadge");
-const roleEl = document.getElementById("dlgRole");
-const taskEl = document.getElementById("dlgTask");
-const updatedEl = document.getElementById("dlgUpdated");
+const els = {
+  name: document.getElementById("dlgName"),
+  badge: document.getElementById("dlgBadge"),
+  role: document.getElementById("dlgRole"),
+  motto: document.getElementById("dlgMotto"),
+  task: document.getElementById("dlgTask"),
+  done: document.getElementById("dlgDone"),
+  updated: document.getElementById("dlgUpdated"),
+  link: document.getElementById("dlgLink"),
+};
 
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0xcbb8e8);
-scene.fog = new THREE.Fog(0xcbb8e8, 22, 48);
+scene.background = new THREE.Color(0x9fd4ea);
+scene.fog = new THREE.Fog(0x9fd4ea, 28, 55);
 
-const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 100);
-camera.position.set(10, 9, 12);
+const camera = new THREE.PerspectiveCamera(38, 1, 0.1, 100);
+const camHome = new THREE.Vector3(11, 10, 13);
+camera.position.copy(camHome);
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
 renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 host.appendChild(renderer.domElement);
 
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
-controls.target.set(0, 0.5, 0);
-controls.maxPolarAngle = Math.PI * 0.46;
-controls.minDistance = 7;
-controls.maxDistance = 24;
+controls.target.set(0, 1.2, 0);
+controls.maxPolarAngle = Math.PI * 0.45;
+controls.minDistance = 8;
+controls.maxDistance = 26;
+document.getElementById("btnReset").onclick = () => {
+  camera.position.copy(camHome);
+  controls.target.set(0, 1.2, 0);
+  controls.update();
+};
 
-scene.add(new THREE.AmbientLight(0xfff0e0, 0.85));
-const sun = new THREE.DirectionalLight(0xffe6c8, 0.9);
-sun.position.set(8, 14, 6);
+scene.add(new THREE.AmbientLight(0xfff5e6, 0.95));
+scene.add(new THREE.HemisphereLight(0xfff0d0, 0xb8dcc0, 0.55));
+const sun = new THREE.DirectionalLight(0xffe8c8, 0.85);
+sun.position.set(6, 16, 8);
 sun.castShadow = true;
+sun.shadow.mapSize.set(1024, 1024);
+sun.shadow.camera.near = 1;
+sun.shadow.camera.far = 40;
+sun.shadow.camera.left = -12;
+sun.shadow.camera.right = 12;
+sun.shadow.camera.top = 12;
+sun.shadow.camera.bottom = -12;
 scene.add(sun);
-scene.add(new THREE.HemisphereLight(0xffe8d0, 0x9b6dff, 0.45));
-const warm = new THREE.PointLight(ORANGE, 0.5, 28);
-warm.position.set(-2, 3, 2);
-scene.add(warm);
+const lampOrange = new THREE.PointLight(0xff8b3d, 0.35, 20);
+lampOrange.position.set(-3, 3.5, 2);
+scene.add(lampOrange);
 
-function toon(color, emissive = 0x000000, ei = 0) {
-  return new THREE.MeshToonMaterial({ color, emissive, emissiveIntensity: ei });
+function woodTex() {
+  const c = document.createElement("canvas");
+  c.width = 256; c.height = 256;
+  const ctx = c.getContext("2d");
+  ctx.fillStyle = "#e8c89a";
+  ctx.fillRect(0, 0, 256, 256);
+  for (let y = 0; y < 256; y += 32) {
+    ctx.fillStyle = y % 64 === 0 ? "#d4b07e" : "#efd2a8";
+    ctx.fillRect(0, y, 256, 30);
+    ctx.strokeStyle = "rgba(120,80,40,0.18)";
+    ctx.beginPath();
+    ctx.moveTo(0, y + 30);
+    ctx.lineTo(256, y + 30);
+    ctx.stroke();
+    for (let x = (y % 64 === 0 ? 0 : 64); x < 256; x += 128) {
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.lineTo(x, y + 30);
+      ctx.stroke();
+    }
+  }
+  const t = new THREE.CanvasTexture(c);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.repeat.set(6, 6);
+  t.colorSpace = THREE.SRGBColorSpace;
+  return t;
+}
+function wallTex() {
+  const c = document.createElement("canvas");
+  c.width = 128; c.height = 128;
+  const ctx = c.getContext("2d");
+  ctx.fillStyle = "#fff3df";
+  ctx.fillRect(0, 0, 128, 128);
+  ctx.fillStyle = "rgba(255,180,120,0.12)";
+  for (let i = 0; i < 40; i++) {
+    ctx.beginPath();
+    ctx.arc(Math.random() * 128, Math.random() * 128, 2 + Math.random() * 3, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  const t = new THREE.CanvasTexture(c);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.repeat.set(4, 2);
+  t.colorSpace = THREE.SRGBColorSpace;
+  return t;
 }
 
-function box(w, h, d, color, x, y, z, parent = scene, opts = {}) {
-  const m = new THREE.Mesh(
-    new THREE.BoxGeometry(w, h, d),
-    toon(color, opts.emissive ?? 0, opts.ei ?? 0)
+function toon(color, map = null) {
+  return new THREE.MeshToonMaterial({ color, map });
+}
+function rbox(w, h, d, color, x, y, z, parent = scene, radius = 0.08) {
+  const mesh = new THREE.Mesh(
+    new RoundedBoxGeometry(w, h, d, 3, radius),
+    typeof color === "number" ? toon(color) : color
   );
-  m.position.set(x, y, z);
-  m.castShadow = true;
-  m.receiveShadow = true;
-  parent.add(m);
-  return m;
+  mesh.position.set(x, y, z);
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  parent.add(mesh);
+  return mesh;
 }
-
-function round(r, color, x, y, z, parent = scene, sy = 1) {
-  const m = new THREE.Mesh(new THREE.SphereGeometry(r, 14, 12), toon(color));
+function sphere(r, color, x, y, z, parent = scene, sy = 1) {
+  const m = new THREE.Mesh(new THREE.SphereGeometry(r, 16, 14), toon(color));
   m.position.set(x, y, z);
   m.scale.y = sy;
   m.castShadow = true;
@@ -109,65 +181,106 @@ function round(r, color, x, y, z, parent = scene, sy = 1) {
   return m;
 }
 
-// Room — cream floor, soft lavender walls (AC daytime-ish + Halloween tint)
-box(16, 0.4, 14, 0xf0e2c8, 0, 0, 0);
-box(16, 4.5, 0.4, 0xe8d8f8, 0, 2.25, -6.7);
-box(0.4, 4.5, 14, 0xddd0f0, -7.8, 2.25, 0);
-box(0.4, 4.5, 14, 0xd8c8ec, 7.8, 2.25, 0);
-box(7, 0.08, 5, 0xffe0b8, 0, 0.24, 0.3); // rug
+// Room shell
+const floorMat = toon(0xffffff, woodTex());
+const floor = new THREE.Mesh(new THREE.BoxGeometry(16, 0.35, 14), floorMat);
+floor.position.y = 0;
+floor.receiveShadow = true;
+scene.add(floor);
 
-// Wall TV for cut preview
-box(3.2, 2.0, 0.15, 0x2a1f14, 2.2, 2.6, -6.45);
-box(2.8, 1.6, 0.12, 0x1a2030, 2.2, 2.6, -6.35, scene, {
-  emissive: ORANGE,
-  ei: 0.2,
+const wMat = toon(0xffffff, wallTex());
+const back = new THREE.Mesh(new THREE.BoxGeometry(16, 5.2, 0.35), wMat);
+back.position.set(0, 2.6, -6.85);
+back.receiveShadow = true;
+scene.add(back);
+const left = new THREE.Mesh(new THREE.BoxGeometry(0.35, 5.2, 14), wMat);
+left.position.set(-7.9, 2.6, 0);
+scene.add(left);
+const right = left.clone();
+right.position.x = 7.9;
+scene.add(right);
+
+// Baseboard
+rbox(16, 0.25, 0.2, 0xc48a4a, 0, 0.3, -6.65, scene, 0.04);
+rbox(0.2, 0.25, 14, 0xc48a4a, -7.7, 0.3, 0, scene, 0.04);
+rbox(0.2, 0.25, 14, 0xc48a4a, 7.7, 0.3, 0, scene, 0.04);
+
+// Round rug
+const rug = new THREE.Mesh(
+  new THREE.CylinderGeometry(3.2, 3.2, 0.06, 32),
+  toon(0xffc089)
+);
+rug.position.set(0, 0.22, 0.4);
+rug.receiveShadow = true;
+scene.add(rug);
+const rugIn = new THREE.Mesh(
+  new THREE.CylinderGeometry(2.4, 2.4, 0.07, 32),
+  toon(0xffe0b8)
+);
+rugIn.position.set(0, 0.23, 0.4);
+scene.add(rugIn);
+
+// Night window (AC style framed window)
+rbox(3.6, 2.6, 0.15, 0xf5e6d0, -2.2, 3.0, -6.62, scene, 0.06);
+rbox(3.1, 2.1, 0.08, 0x2a3350, -2.2, 3.0, -6.55, scene, 0.04);
+// moon
+sphere(0.35, 0xfff0b0, -1.5, 3.4, -6.48);
+sphere(0.12, 0xffffff, -2.8, 3.6, -6.48);
+sphere(0.08, 0xffffff, -3.1, 3.2, -6.48);
+// cute bats outside
+rbox(0.35, 0.08, 0.08, 0x3a2a55, -2.6, 2.5, -6.45, scene, 0.03);
+rbox(0.35, 0.08, 0.08, 0x3a2a55, -1.5, 2.7, -6.45, scene, 0.03);
+
+// Wall TV for cut
+rbox(2.8, 1.8, 0.18, 0xf5e6d0, 3.2, 3.0, -6.62, scene, 0.06);
+const tv = rbox(2.3, 1.35, 0.1, 0x2a3340, 3.2, 3.0, -6.5, scene, 0.04);
+tv.material = new THREE.MeshToonMaterial({
+  color: 0x2a3340,
+  emissive: 0xff8b3d,
+  emissiveIntensity: 0.25,
 });
 
-// Cute pumpkins & bats
-function pumpkin(x, z, s = 1) {
-  round(0.42 * s, ORANGE, x, 0.42 * s, z, scene, 0.85);
-  box(0.1 * s, 0.2 * s, 0.1 * s, 0x4a8a3a, x, 0.72 * s, z);
-}
-pumpkin(-6.2, -5.2, 1.2);
-pumpkin(6.0, -4.8, 0.9);
-pumpkin(-5.5, 4.5, 0.75);
-
-const bats = [];
-function bat(x, y, z) {
+// Plants
+function plant(x, z) {
   const g = new THREE.Group();
-  round(0.12, 0x3a2a55, 0, 0, 0, g);
-  box(0.5, 0.06, 0.22, 0x4a3a6a, -0.3, 0, 0, g);
-  box(0.5, 0.06, 0.22, 0x4a3a6a, 0.3, 0, 0, g);
-  g.position.set(x, y, z);
+  rbox(0.45, 0.4, 0.45, 0xe07050, 0, 0.35, 0, g, 0.1);
+  sphere(0.45, 0x5ecf7a, 0, 0.95, 0, g, 1.1);
+  sphere(0.28, 0x7adf90, 0.25, 1.15, 0.1, g);
+  g.position.set(x, 0, z);
   scene.add(g);
-  bats.push(g);
 }
-bat(-2.5, 3.8, -5);
-bat(1.5, 3.5, -4.2);
+plant(-6.5, 4.5);
+plant(6.5, 4.2);
+plant(-6.3, -4.8);
+
+// Pumpkins (cute, not scary)
+function pumpkin(x, z, s = 1) {
+  sphere(0.38 * s, 0xff8b3d, x, 0.4 * s, z, scene, 0.85);
+  rbox(0.1 * s, 0.18 * s, 0.1 * s, 0x5a9a3a, x, 0.68 * s, z, scene, 0.03);
+}
+pumpkin(-5.8, -5.5, 1.15);
+pumpkin(5.6, -5.2, 0.9);
+pumpkin(5.9, 3.6, 0.7);
 
 const clickables = [];
+const floaters = [];
 
-function labelSprite(text) {
+function nameplate(text) {
   const c = document.createElement("canvas");
-  c.width = 320;
-  c.height = 80;
+  c.width = 256; c.height = 64;
   const ctx = c.getContext("2d");
-  ctx.fillStyle = "rgba(245,240,232,0.95)";
-  roundRect(ctx, 20, 16, 280, 48, 24);
-  ctx.fill();
-  ctx.strokeStyle = "#5a3d82";
-  ctx.lineWidth = 5;
-  roundRect(ctx, 20, 16, 280, 48, 24);
-  ctx.stroke();
-  ctx.fillStyle = "#2a1f14";
-  ctx.font = "bold 26px sans-serif";
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  ctx.fillText(text, 160, 40);
+  ctx.fillStyle = "#fff6e8";
+  roundRect(ctx, 8, 10, 240, 44, 16); ctx.fill();
+  ctx.strokeStyle = "#4a3428"; ctx.lineWidth = 4;
+  roundRect(ctx, 8, 10, 240, 44, 16); ctx.stroke();
+  ctx.fillStyle = "#4a3428";
+  ctx.font = "bold 22px sans-serif";
+  ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  ctx.fillText(text, 128, 32);
   const tex = new THREE.CanvasTexture(c);
   tex.colorSpace = THREE.SRGBColorSpace;
   const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthTest: false }));
-  sp.scale.set(2.1, 0.52, 1);
+  sp.scale.set(1.7, 0.42, 1);
   return sp;
 }
 function roundRect(ctx, x, y, w, h, r) {
@@ -180,138 +293,128 @@ function roundRect(ctx, x, y, w, h, r) {
   ctx.closePath();
 }
 
-function baseDesk(parent) {
-  box(1.6, 0.16, 0.95, WOOD, 0, 0.82, 0, parent);
-  [[-0.65, -0.35], [0.65, -0.35], [-0.65, 0.35], [0.65, 0.35]].forEach(([lx, lz]) => {
-    box(0.12, 0.78, 0.12, WOOD2, lx, 0.39, lz, parent);
-  });
-  // chubby chair
-  box(0.62, 0.5, 0.62, PURPLE, 0, 0.42, 0.85, parent);
-  box(0.62, 0.55, 0.12, 0x7a52cc, 0, 0.85, 1.08, parent);
+function villager(parent, color) {
+  const g = new THREE.Group();
+  // body
+  const body = new THREE.Mesh(
+    new RoundedBoxGeometry(0.55, 0.7, 0.4, 3, 0.12),
+    toon(color)
+  );
+  body.position.y = 0.85;
+  body.castShadow = true;
+  g.add(body);
+  // head
+  const head = sphere(0.32, 0xffe0c0, 0, 1.45, 0, g);
+  // ears
+  sphere(0.1, color, -0.22, 1.65, 0, g);
+  sphere(0.1, color, 0.22, 1.65, 0, g);
+  // eyes
+  sphere(0.05, 0x2a1f14, -0.1, 1.48, 0.28, g);
+  sphere(0.05, 0x2a1f14, 0.1, 1.48, 0.28, g);
+  // blush
+  sphere(0.05, 0xff9aa8, -0.18, 1.38, 0.26, g, 0.6);
+  sphere(0.05, 0xff9aa8, 0.18, 1.38, 0.26, g, 0.6);
+  g.position.set(0, 0, 0.95);
+  parent.add(g);
+  return g;
 }
 
-function lamp(parent, status) {
-  const col = status === "busy" ? BUSY : IDLE;
-  const bulb = round(0.15, col, 0.55, 1.25, -0.15, parent);
-  bulb.material.emissive = new THREE.Color(col);
-  bulb.material.emissiveIntensity = 0.9;
-  const light = new THREE.PointLight(col, 0.55, 4);
-  light.position.set(0.55, 1.25, -0.15);
-  parent.add(light);
-  return bulb;
-}
-
-function propsFor(id, parent) {
-  // 1 large + 2 medium + 1–2 small; Halloween mini at corner
-  const tip = (sx, sy, sz) => box(0.14, 0.12, 0.14, ORANGE, sx, sy, sz, parent);
-
-  if (id === "ai") {
-    // large: dual monitors
-    box(0.72, 0.5, 0.07, 0x2a2a35, -0.38, 1.22, -0.28, parent);
-    box(0.58, 0.36, 0.03, 0x7ec8ff, -0.38, 1.22, -0.23, parent, { emissive: 0x2266aa, ei: 0.35 });
-    box(0.72, 0.5, 0.07, 0x2a2a35, 0.4, 1.22, -0.22, parent);
-    box(0.58, 0.36, 0.03, 0x9bffce, 0.4, 1.22, -0.17, parent, { emissive: 0x226644, ei: 0.3 });
-    // medium: keyboard + code window block
-    box(0.9, 0.05, 0.32, 0x333340, 0, 0.93, 0.18, parent);
-    box(0.4, 0.28, 0.04, 0x1e2430, 0.55, 1.15, 0.15, parent, { emissive: 0x33ff88, ei: 0.2 });
-    // small: coffee + mini pumpkin
-    round(0.11, 0xc48a4a, -0.55, 0.98, 0.28, parent);
-    tip(0.65, 0.96, 0.32);
-  } else if (id === "write") {
-    // large: open notebook / papers
-    box(0.7, 0.05, 0.55, CREAM, -0.1, 0.94, 0.05, parent);
-    box(0.32, 0.03, 0.5, 0xfff8e8, -0.28, 0.98, 0.05, parent);
-    box(0.32, 0.03, 0.5, 0xfff8e8, 0.08, 0.98, 0.05, parent);
-    // medium: desk lamp + pen cup
-    box(0.08, 0.38, 0.08, 0xffd090, 0.55, 1.12, -0.25, parent);
-    round(0.18, 0xffe0a0, 0.55, 1.38, -0.25, parent);
-    box(0.16, 0.18, 0.16, PURPLE, -0.55, 1.0, -0.2, parent);
-    box(0.03, 0.22, 0.03, 0x2a1f14, -0.55, 1.15, -0.2, parent);
-    // small: tea + mini pumpkin
-    round(0.1, 0xe8d0a8, 0.4, 0.98, 0.3, parent);
-    tip(-0.55, 0.96, 0.3);
-  } else if (id === "design") {
-    // large: drawing tablet
-    box(0.85, 0.05, 0.58, 0x333340, 0.05, 0.94, 0.05, parent);
-    box(0.72, 0.02, 0.48, 0xf0e8ff, 0.05, 0.97, 0.05, parent);
-    // medium: moodboard + marker cup
-    box(0.55, 0.4, 0.05, WOOD2, -0.55, 1.2, -0.25, parent);
-    box(0.45, 0.32, 0.03, CREAM, -0.55, 1.2, -0.21, parent);
-    box(0.06, 0.08, 0.06, ORANGE, -0.65, 1.05, -0.05, parent);
-    box(0.06, 0.08, 0.06, PURPLE, -0.55, 1.05, -0.05, parent);
-    box(0.06, 0.08, 0.06, 0x5ecf9a, -0.45, 1.05, -0.05, parent);
-    box(0.18, 0.16, 0.18, 0x8888aa, 0.55, 1.0, -0.2, parent);
-    // small: stylus + pumpkin lamp vibe
-    box(0.05, 0.28, 0.05, 0x666677, 0.5, 1.08, 0.25, parent);
-    tip(0.6, 0.96, 0.35);
-  } else if (id === "cut") {
-    // large: timeline-ish wide screen
-    box(1.15, 0.55, 0.08, 0x2a2a35, 0, 1.25, -0.28, parent);
-    box(1.0, 0.4, 0.04, 0xff9955, 0, 1.28, -0.22, parent, { emissive: ORANGE, ei: 0.28 });
-    box(0.9, 0.08, 0.04, 0x66aadd, 0, 1.08, -0.2, parent, { emissive: 0x226688, ei: 0.25 });
-    // medium: headphones + camera
-    box(0.45, 0.12, 0.35, 0x444455, -0.5, 0.98, 0.2, parent);
-    round(0.12, 0x333344, -0.68, 1.0, 0.2, parent);
-    round(0.12, 0x333344, -0.32, 1.0, 0.2, parent);
-    box(0.28, 0.18, 0.22, 0x222230, 0.5, 1.0, 0.22, parent);
-    // small: tape canister + pumpkin
-    round(0.1, 0x886644, 0.55, 0.98, -0.05, parent);
-    tip(-0.6, 0.96, -0.15);
-  } else if (id === "grok") {
-    // large: whiteboard / task board
-    box(0.85, 0.75, 0.06, WOOD2, -0.15, 1.3, -0.28, parent);
-    box(0.72, 0.62, 0.04, CREAM, -0.15, 1.3, -0.24, parent);
-    box(0.12, 0.1, 0.02, ORANGE, -0.35, 1.45, -0.2, parent);
-    box(0.12, 0.1, 0.02, PURPLE, -0.18, 1.45, -0.2, parent);
-    box(0.12, 0.1, 0.02, 0x5ecf9a, -0.01, 1.45, -0.2, parent);
-    // medium: walkie + sticky stack
-    round(0.14, 0x555566, 0.5, 1.0, 0.1, parent);
-    box(0.05, 0.24, 0.05, 0x333340, 0.5, 1.2, 0.1, parent);
-    box(0.28, 0.12, 0.28, PURPLE, 0.35, 0.96, -0.2, parent);
-    // small: bat + pumpkin command corner
-    box(0.28, 0.08, 0.16, 0x3a2a55, 0.55, 0.96, 0.32, parent);
-    tip(-0.55, 0.96, 0.3);
-  }
-}
-
-function makeDesk(id, x, z, label) {
+function deskSet(id, x, z, label) {
+  const p = people[id];
   const g = new THREE.Group();
   g.position.set(x, 0, z);
-  baseDesk(g);
-  propsFor(id, g);
-  const bulb = lamp(g, people[id].status);
-  const sp = labelSprite(label);
-  sp.position.set(0, 1.75, 0);
-  g.add(sp);
+
+  // chubby desk
+  rbox(1.7, 0.18, 1.0, 0xf0d0a0, 0, 0.85, 0, g, 0.1);
+  [[-0.7, -0.38], [0.7, -0.38], [-0.7, 0.38], [0.7, 0.38]].forEach(([lx, lz]) => {
+    rbox(0.14, 0.8, 0.14, 0xd4a06a, lx, 0.4, lz, g, 0.05);
+  });
+  // chair
+  rbox(0.7, 0.45, 0.7, p.color, 0, 0.45, 0.95, g, 0.12);
+  rbox(0.7, 0.55, 0.14, p.color, 0, 0.9, 1.22, g, 0.08);
+
+  // role props (simplified cute)
+  if (id === "ai") {
+    rbox(0.7, 0.5, 0.08, 0x4a5060, -0.35, 1.25, -0.3, g, 0.05);
+    rbox(0.55, 0.35, 0.04, 0x9fe0ff, -0.35, 1.25, -0.25, g, 0.03);
+    rbox(0.7, 0.5, 0.08, 0x4a5060, 0.4, 1.25, -0.25, g, 0.05);
+    rbox(0.55, 0.35, 0.04, 0xb8ffd0, 0.4, 1.25, -0.2, g, 0.03);
+    rbox(0.85, 0.06, 0.3, 0x5a6070, 0, 0.96, 0.15, g, 0.04);
+    sphere(0.1, 0xc48a4a, -0.55, 0.98, 0.3, g);
+  } else if (id === "write") {
+    rbox(0.65, 0.05, 0.5, 0xfff8ec, 0, 0.96, 0.05, g, 0.04);
+    rbox(0.08, 0.35, 0.08, 0xffd090, 0.55, 1.15, -0.25, g, 0.03);
+    sphere(0.16, 0xffe0a8, 0.55, 1.38, -0.25, g);
+    sphere(0.1, 0xe8c090, -0.5, 0.98, 0.25, g);
+  } else if (id === "design") {
+    rbox(0.8, 0.05, 0.55, 0x5a6070, 0.1, 0.96, 0.05, g, 0.05);
+    rbox(0.68, 0.02, 0.45, 0xf5e8ff, 0.1, 0.99, 0.05, g, 0.02);
+    rbox(0.08, 0.1, 0.08, 0xff8b3d, -0.55, 0.98, -0.15, g, 0.02);
+    rbox(0.08, 0.1, 0.08, 0xb58cff, -0.42, 0.98, -0.15, g, 0.02);
+    rbox(0.08, 0.1, 0.08, 0x6fd6a0, -0.29, 0.98, -0.15, g, 0.02);
+  } else if (id === "cut") {
+    rbox(1.1, 0.5, 0.08, 0x4a5060, 0, 1.25, -0.28, g, 0.05);
+    rbox(0.95, 0.35, 0.04, 0xffb07a, 0, 1.28, -0.22, g, 0.03);
+    rbox(0.45, 0.12, 0.35, 0x5a6070, -0.5, 0.98, 0.2, g, 0.06);
+  } else if (id === "grok") {
+    rbox(0.8, 0.7, 0.08, 0xf5e6d0, -0.15, 1.3, -0.28, g, 0.06);
+    rbox(0.65, 0.55, 0.05, 0xfff8ec, -0.15, 1.3, -0.22, g, 0.04);
+    sphere(0.14, 0x6a7080, 0.5, 1.0, 0.1, g);
+  }
+  // mini pumpkin accent
+  sphere(0.12, 0xff8b3d, 0.65, 0.98, 0.35, g, 0.85);
+
+  // status lamp
+  const lampCol = p.status === "busy" ? 0xff8b3d : 0x6fd6a0;
+  const bulb = sphere(0.12, lampCol, 0.55, 1.35, -0.35, g);
+  bulb.material.emissive = new THREE.Color(lampCol);
+  bulb.material.emissiveIntensity = 0.7;
+  const light = new THREE.PointLight(lampCol, 0.4, 3.5);
+  light.position.set(0.55, 1.35, -0.35);
+  g.add(light);
+
+  const vill = villager(g, p.color);
+  floaters.push({ group: g, vill, busy: p.status === "busy", bulb });
+
+  const plate = nameplate(label);
+  plate.position.set(0, 2.15, 0.2);
+  g.add(plate);
+
   const hit = new THREE.Mesh(
-    new THREE.BoxGeometry(1.9, 1.9, 1.9),
+    new THREE.BoxGeometry(2.0, 2.4, 2.2),
     new THREE.MeshBasicMaterial({ visible: false })
   );
-  hit.position.y = 0.9;
+  hit.position.set(0, 1.1, 0.3);
   hit.userData = { id };
   g.add(hit);
   clickables.push(hit);
+
   scene.add(g);
-  return { bulb, status: people[id].status };
 }
 
-const deskMeta = [
-  makeDesk("grok", -3.5, -1.5, "Grok Bot"),
-  makeDesk("ai", 0.3, -2.6, "AI開發"),
-  makeDesk("design", 3.6, -1.2, "設計"),
-  makeDesk("write", -2.6, 2.4, "寫作"),
-  makeDesk("cut", 2.8, 2.5, "剪片"),
-];
+deskSet("grok", -3.6, -1.6, "Grok Bot");
+deskSet("ai", 0.2, -2.8, "AI開發");
+deskSet("design", 3.7, -1.3, "設計");
+deskSet("write", -2.8, 2.5, "寫作");
+deskSet("cut", 2.9, 2.6, "剪片");
 
 function openPerson(id) {
   const p = people[id];
   if (!p) return;
-  nameEl.textContent = p.name;
-  roleEl.textContent = p.role;
-  taskEl.textContent = p.task;
-  updatedEl.textContent = "更新：" + p.updated;
-  badgeEl.textContent = p.status === "busy" ? "忙緊" : "得閒";
-  badgeEl.className = "badge " + (p.status === "busy" ? "busy" : "idle");
+  els.name.textContent = p.name;
+  els.role.textContent = p.role;
+  els.motto.textContent = "「" + p.motto + "」";
+  els.task.textContent = p.task;
+  els.done.textContent = p.done;
+  els.updated.textContent = "更新：" + p.updated;
+  els.badge.textContent = p.status === "busy" ? "忙緊" : "得閒";
+  els.badge.className = "badge " + (p.status === "busy" ? "busy" : "idle");
+  if (p.link) {
+    els.link.hidden = false;
+    els.link.href = p.link;
+  } else {
+    els.link.hidden = true;
+  }
   dlg.showModal?.() || dlg.setAttribute("open", "");
 }
 
@@ -343,11 +446,11 @@ const clock = new THREE.Clock();
 function animate() {
   requestAnimationFrame(animate);
   const t = clock.getElapsedTime();
-  bats.forEach((b, i) => {
-    b.position.y = 3.4 + Math.sin(t * 1.3 + i) * 0.2;
-  });
-  deskMeta.forEach((d, i) => {
-    if (d.status === "busy") d.bulb.material.emissiveIntensity = 0.55 + Math.sin(t * 2.8 + i) * 0.3;
+  floaters.forEach((f, i) => {
+    if (f.busy) {
+      f.group.position.y = Math.sin(t * 2 + i) * 0.04;
+      f.bulb.material.emissiveIntensity = 0.45 + Math.sin(t * 3 + i) * 0.3;
+    }
   });
   controls.update();
   renderer.render(scene, camera);
