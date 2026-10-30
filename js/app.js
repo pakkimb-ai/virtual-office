@@ -3,7 +3,7 @@ import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.js";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 
-const HKT = "2026-10-31 00:35 HKT";
+const HKT = "2026-10-31 01:35 HKT";
 
 const people = {
   grok: {
@@ -58,8 +58,8 @@ const els = {
 };
 
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0xb8dff0);
-scene.fog = new THREE.Fog(0xb8dff0, 32, 60);
+scene.background = new THREE.Color(0xa8daf0);
+scene.fog = new THREE.Fog(0xa8daf0, 34, 62);
 
 const camera = new THREE.PerspectiveCamera(38, 1, 0.1, 100);
 const camHome = new THREE.Vector3(10.2, 10.8, 12.2);
@@ -89,9 +89,9 @@ if (hintEl) {
   setTimeout(() => hintEl.classList.add("hide"), 3000);
 }
 
-scene.add(new THREE.AmbientLight(0xfff8f0, 1.15));
-scene.add(new THREE.HemisphereLight(0xe8f4ff, 0xd8e0d0, 0.55));
-const sun = new THREE.DirectionalLight(0xfff0d8, 0.85);
+scene.add(new THREE.AmbientLight(0xfff8f0, 1.35));
+scene.add(new THREE.HemisphereLight(0xe8f8ff, 0xd0e8c8, 0.7));
+const sun = new THREE.DirectionalLight(0xfff2dc, 0.95);
 sun.position.set(4, 16, 6);
 sun.castShadow = true;
 sun.shadow.mapSize.set(1024, 1024);
@@ -114,7 +114,7 @@ const texLoader = new THREE.TextureLoader();
 const modelCache = {};
 
 function toon(color, map = null) {
-  return new THREE.MeshToonMaterial({ color, map });
+  return new THREE.MeshLambertMaterial({ color, map });
 }
 function rbox(w, h, d, color, x, y, z, parent = scene, radius = 0.08) {
   const mesh = new THREE.Mesh(
@@ -200,21 +200,21 @@ function wallTex() {
 function daySkyTex() {
   return canvasTex((ctx, w, h) => {
     const g = ctx.createLinearGradient(0, 0, 0, h);
-    g.addColorStop(0, "#A8D8F0");
-    g.addColorStop(0.4, "#C8E8F8");
-    g.addColorStop(0.7, "#FFE0B8");
-    g.addColorStop(1, "#FFC890");
+    g.addColorStop(0, "#7EC8E8");
+    g.addColorStop(0.35, "#B0E0F5");
+    g.addColorStop(0.65, "#D8F0C8");
+    g.addColorStop(1, "#8BC96A");
     ctx.fillStyle = g;
     ctx.fillRect(0, 0, w, h);
     ctx.fillStyle = "rgba(255,245,200,0.95)";
     ctx.beginPath();
     ctx.arc(200, 48, 26, 0, Math.PI * 2);
     ctx.fill();
-    ctx.fillStyle = "rgba(120,170,130,0.35)";
+    ctx.fillStyle = "rgba(70,160,80,0.55)";
     ctx.beginPath();
-    ctx.moveTo(0, 130);
-    ctx.quadraticCurveTo(80, 100, 160, 125);
-    ctx.quadraticCurveTo(210, 140, 256, 120);
+    ctx.moveTo(0, 115);
+    ctx.quadraticCurveTo(80, 85, 160, 110);
+    ctx.quadraticCurveTo(210, 125, 256, 105);
     ctx.lineTo(256, 160);
     ctx.lineTo(0, 160);
     ctx.fill();
@@ -362,8 +362,8 @@ function grassDesktopTex() {
     ctx.arc(w * 0.78, h * 0.18, 18, 0, Math.PI * 2);
     ctx.fill();
     const hill = ctx.createLinearGradient(0, h * 0.4, 0, h);
-    hill.addColorStop(0, "#7BC97A");
-    hill.addColorStop(1, "#4FA85A");
+    hill.addColorStop(0, "#6BD86A");
+    hill.addColorStop(1, "#3E9A48");
     ctx.fillStyle = hill;
     ctx.beginPath();
     ctx.moveTo(0, h * 0.55);
@@ -550,7 +550,7 @@ function checklistBoardTex() {
   return checklistTex();
 }
 
-function restyleToToon(root, tintHex = null) {
+function restyleLambert(root, tintHex = null) {
   root.traverse((obj) => {
     if (!obj.isMesh) return;
     obj.castShadow = true;
@@ -563,36 +563,87 @@ function restyleToToon(root, tintHex = null) {
         map.needsUpdate = true;
       }
       const col = tintHex != null ? tintHex : m.color?.getHex?.() ?? 0xffffff;
-      const mat = new THREE.MeshToonMaterial({
+      const mat = new THREE.MeshLambertMaterial({
         color: col,
         map,
-        transparent: m.transparent,
+        transparent: !!m.transparent,
         opacity: m.opacity ?? 1,
         side: m.side ?? THREE.FrontSide,
+        vertexColors: !!m.vertexColors,
+        alphaTest: m.alphaTest || 0,
       });
+      if (m.emissive) {
+        mat.emissive = m.emissive.clone();
+        mat.emissiveIntensity = m.emissiveIntensity ?? 1;
+      }
       return mat;
     });
     obj.material = next.length === 1 ? next[0] : next;
   });
 }
 
+/** Clone scene graph AND each material so tint/restyle cannot pollute cache. */
+function deepClone(model) {
+  const root = model.clone(true);
+  root.traverse((obj) => {
+    if (!obj.isMesh) return;
+    if (Array.isArray(obj.material)) {
+      obj.material = obj.material.map((m) => (m ? m.clone() : m));
+    } else if (obj.material) {
+      obj.material = obj.material.clone();
+    }
+  });
+  return root;
+}
+
+/** Uniformly scale so bounding-box height ≈ targetH (world units). */
+function fitHeight(model, targetH) {
+  model.updateMatrixWorld(true);
+  const box = new THREE.Box3().setFromObject(model);
+  const size = new THREE.Vector3();
+  box.getSize(size);
+  if (size.y < 1e-6) return model;
+  const s = targetH / size.y;
+  model.scale.multiplyScalar(s);
+  return model;
+}
+
+/** Scale so bounding-box width ≈ targetW. */
+function fitWidth(model, targetW) {
+  model.updateMatrixWorld(true);
+  const box = new THREE.Box3().setFromObject(model);
+  const size = new THREE.Vector3();
+  box.getSize(size);
+  if (size.x < 1e-6) return model;
+  model.scale.multiplyScalar(targetW / size.x);
+  return model;
+}
+
+/** After scale, put model so its bbox min.y sits on yBase (local parent Y). */
+function sitOn(model, yBase) {
+  model.updateMatrixWorld(true);
+  const box = new THREE.Box3().setFromObject(model);
+  model.position.y += yBase - box.min.y;
+  return model;
+}
+
 async function loadKay(name) {
   const key = "kay:" + name;
   if (!modelCache[key]) {
     const gltf = await gltfLoader.loadAsync(`assets/kaykit/${name}.gltf`);
-    restyleToToon(gltf.scene);
+    restyleLambert(gltf.scene);
     modelCache[key] = gltf.scene;
   }
-  return modelCache[key].clone(true);
+  return deepClone(modelCache[key]);
 }
 async function loadKen(name) {
   const key = "ken:" + name;
   if (!modelCache[key]) {
     const gltf = await gltfLoader.loadAsync(`assets/kenney/${name}.glb`);
-    restyleToToon(gltf.scene);
+    restyleLambert(gltf.scene);
     modelCache[key] = gltf.scene;
   }
-  return modelCache[key].clone(true);
+  return deepClone(modelCache[key]);
 }
 
 function placeModel(model, parent, x, y, z, scale = 1, rotY = 0) {
@@ -603,12 +654,42 @@ function placeModel(model, parent, x, y, z, scale = 1, rotY = 0) {
   return model;
 }
 
+/** Place with target height; y is floor/surface the model should sit on. */
+function placeFit(model, parent, x, y, z, targetH, rotY = 0) {
+  model.scale.setScalar(1);
+  model.position.set(0, 0, 0);
+  model.rotation.set(0, 0, 0);
+  fitHeight(model, targetH);
+  model.position.set(x, 0, z);
+  model.rotation.y = rotY;
+  parent.add(model);
+  sitOn(model, y);
+  return model;
+}
+
 function tintModel(model, hex) {
   model.traverse((obj) => {
     if (!obj.isMesh) return;
     const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
     mats.forEach((m) => {
       if (m.color) m.color.setHex(hex);
+      // drop dark atlas maps that read as black after tint
+      if (m.map && hex != null) {
+        // keep map for textured furniture; chair tint wants solid color
+      }
+    });
+  });
+}
+
+/** Force light flat color (no map) — for mouse / dark atlas junk. */
+function solidColor(model, hex) {
+  model.traverse((obj) => {
+    if (!obj.isMesh) return;
+    const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
+    mats.forEach((m) => {
+      m.map = null;
+      if (m.color) m.color.setHex(hex);
+      m.needsUpdate = true;
     });
   });
 }
@@ -684,7 +765,7 @@ const cTex = curtainTex();
 function curtainPanel(x) {
   const m = new THREE.Mesh(
     new THREE.PlaneGeometry(0.95, 2.7),
-    new THREE.MeshToonMaterial({
+    new THREE.MeshLambertMaterial({
       map: cTex,
       color: 0xfff8ec,
       transparent: true,
@@ -720,7 +801,7 @@ function sideWindow(wallX, zCenter, facing) {
   // lace curtains pulled to edges
   const cL = new THREE.Mesh(
     new THREE.PlaneGeometry(0.7, 2.4),
-    new THREE.MeshToonMaterial({
+    new THREE.MeshLambertMaterial({
       map: cTex,
       color: 0xfff8ec,
       transparent: true,
@@ -807,7 +888,7 @@ function waterCooler(x, z) {
   cyl(0.05, 0.05, 0.04, 0xff8a1f, -0.1, 0.72, 0.3, g, 10);
   cyl(0.05, 0.05, 0.04, 0x5b8def, 0.1, 0.72, 0.3, g, 10);
   const jug = cyl(0.24, 0.22, 0.58, 0x6ec8f0, 0, 1.55, 0, g, 20);
-  jug.material = new THREE.MeshToonMaterial({ color: 0x6ec8f0, transparent: true, opacity: 0.88 });
+  jug.material = new THREE.MeshLambertMaterial({ color: 0x6ec8f0, transparent: true, opacity: 0.88 });
   cyl(0.09, 0.11, 0.12, 0xa0dcf5, 0, 1.88, 0, g, 12);
   g.position.set(x, 0, z);
   scene.add(g);
@@ -910,9 +991,9 @@ function deskCup(g, x, y, z, color = 0xfff8ec) {
   cyl(0.07, 0.06, 0.12, color, x, y, z, g, 12);
 }
 function paperStack(g, x, y, z) {
-  rbox(0.42, 0.02, 0.32, 0xfff8ec, x, y, z, g, 0.01);
-  rbox(0.4, 0.02, 0.3, 0xf0e8d8, x + 0.02, y + 0.025, z + 0.01, g, 0.01);
-  rbox(0.38, 0.02, 0.28, 0xfff8ec, x - 0.01, y + 0.05, z - 0.01, g, 0.01);
+  rbox(0.28, 0.015, 0.22, 0xfff8ec, x, y, z, g, 0.01);
+  rbox(0.26, 0.015, 0.2, 0xf0e8d8, x + 0.015, y + 0.018, z + 0.008, g, 0.01);
+  rbox(0.25, 0.015, 0.19, 0xfff8ec, x - 0.008, y + 0.036, z - 0.008, g, 0.01);
 }
 function bookEnds(g, x, y, z) {
   rbox(0.06, 0.22, 0.16, 0xc4a574, x - 0.22, y + 0.11, z, g, 0.02);
@@ -937,13 +1018,13 @@ function imac(g, x, y, z, screenMap = null, scale = 1) {
 }
 function photocopier(x, z, rotY = 0) {
   const g = new THREE.Group();
-  rbox(0.85, 0.55, 0.7, 0xf5f2ea, 0, 0.45, 0, g, 0.08);
-  rbox(0.75, 0.08, 0.55, 0xe8e4dc, 0, 0.78, 0, g, 0.04);
-  rbox(0.35, 0.05, 0.4, 0x5a6070, -0.15, 0.85, 0.05, g, 0.02);
-  rbox(0.22, 0.04, 0.18, 0x3a4050, 0.25, 0.84, 0.1, g, 0.02);
-  // paper out tray
-  rbox(0.5, 0.03, 0.25, 0xfff8ec, 0, 0.72, 0.4, g, 0.01);
-  cyl(0.03, 0.03, 0.04, 0x5b8def, 0.28, 0.9, -0.15, g, 8);
+  // ~half a desk wide — ivory body, not oversized
+  rbox(0.55, 0.42, 0.48, 0xf5f2ea, 0, 0.38, 0, g, 0.07);
+  rbox(0.48, 0.06, 0.4, 0xe8e4dc, 0, 0.62, 0, g, 0.03);
+  rbox(0.22, 0.04, 0.28, 0x6a7080, -0.1, 0.68, 0.04, g, 0.02);
+  rbox(0.14, 0.03, 0.12, 0x5a6070, 0.16, 0.67, 0.08, g, 0.02);
+  rbox(0.32, 0.025, 0.18, 0xfff8ec, 0, 0.58, 0.28, g, 0.01);
+  cyl(0.025, 0.025, 0.03, 0x5b8def, 0.18, 0.72, -0.1, g, 8);
   g.position.set(x, 0, z);
   g.rotation.y = rotY;
   scene.add(g);
@@ -989,70 +1070,90 @@ async function deskSet(id, x, z, label) {
   const g = new THREE.Group();
   g.position.set(x, 0, z);
 
-  // KayKit desk (wood + ivory drawer feel via toon)
+  // Desk: light wood top; legs on floor (~0.18); surface ~0.92
+  const FLOOR_Y = 0.18;
+  const TOP_Y = 0.92;
   const desk = await loadKay("table_medium_long");
-  placeModel(desk, g, 0, 0.18, 0, 0.72, 0);
-  // ivory drawer fronts
-  rbox(0.55, 0.18, 0.04, 0xfff8ec, -0.35, 0.55, 0.42, g, 0.03);
-  rbox(0.55, 0.18, 0.04, 0xfff8ec, 0.35, 0.55, 0.42, g, 0.03);
-  cyl(0.03, 0.03, 0.04, 0xc4a574, -0.35, 0.55, 0.45, g, 8);
-  cyl(0.03, 0.03, 0.04, 0xc4a574, 0.35, 0.55, 0.45, g, 8);
+  placeFit(desk, g, 0, FLOOR_Y, 0, TOP_Y - FLOOR_Y, 0); // height ≈ 0.74 → top @ 0.92
+  desk.updateMatrixWorld(true);
+  const deskBox = new THREE.Box3().setFromObject(desk);
+  const topY = deskBox.max.y - g.position.y; // local surface Y
+  // ivory drawer fronts under the top
+  const drawerY = FLOOR_Y + (topY - FLOOR_Y) * 0.45;
+  rbox(0.5, 0.15, 0.04, 0xfff8ec, -0.32, drawerY, 0.38, g, 0.03);
+  rbox(0.5, 0.15, 0.04, 0xfff8ec, 0.32, drawerY, 0.38, g, 0.03);
+  cyl(0.025, 0.025, 0.035, 0xc4a574, -0.32, drawerY, 0.41, g, 8);
+  cyl(0.025, 0.025, 0.035, 0xc4a574, 0.32, drawerY, 0.41, g, 8);
 
-  // KayKit chair tinted to role color (round office chair vibe)
+  // Chair height ≈ 0.9 × desk height (back near desk top, not towering)
   const chair = await loadKay("chair_A");
-  tintModel(chair, p.color);
-  placeModel(chair, g, 0, 0.18, 1.15, 1.05, Math.PI);
-
-  const topY = 0.95;
+  solidColor(chair, p.color);
+  placeFit(chair, g, 0, FLOOR_Y, 1.1, (topY - FLOOR_Y) * 0.92, Math.PI);
 
   // Shared per-desk density: lamp, papers, mug, keyboard, mini pumpkin
   const lamp = await loadKay("lamp_table");
-  const lampX = id === "write" || id === "design" ? 0.62 : -0.68;
-  placeModel(lamp, g, lampX, topY, -0.28, 0.42, 0);
-  const lampL = new THREE.PointLight(0xffe8c0, 0.32, 2.4);
-  lampL.position.set(lampX, topY + 0.38, -0.15);
+  const lampX = id === "write" || id === "design" ? 0.58 : -0.62;
+  placeFit(lamp, g, lampX, topY, -0.26, 0.42, 0);
+  const lampL = new THREE.PointLight(0xffe8c0, 0.35, 2.4);
+  lampL.position.set(lampX, topY + 0.35, -0.12);
   g.add(lampL);
 
-  paperStack(g, id === "grok" ? 0.35 : -0.15, topY + 0.02, 0.28);
-  bookEnds(g, id === "ai" ? 0.7 : -0.55, topY, -0.05);
-  deskCup(g, id === "design" ? -0.72 : 0.72, topY + 0.07, 0.35, p.color);
+  // smaller paper stacks
+  paperStack(g, id === "grok" ? 0.32 : -0.12, topY + 0.015, 0.26);
+  bookEnds(g, id === "ai" ? 0.62 : -0.5, topY, -0.05);
+  deskCup(g, id === "design" ? -0.68 : 0.68, topY + 0.06, 0.32, p.color);
 
+  // Keyboard width ≈ 0.7 × iMac screen (sw≈0.72 → kb≈0.5)
   const kb = await loadKen("computerKeyboard");
-  placeModel(kb, g, 0.05, topY, 0.2, 0.2, 0);
+  kb.scale.setScalar(1);
+  kb.position.set(0, 0, 0);
+  fitWidth(kb, 0.5);
+  g.add(kb);
+  kb.position.set(0.02, 0, 0.18);
+  sitOn(kb, topY);
+
+  // Mouse: light grey/white — never pure black
   const mouse = await loadKen("computerMouse");
-  placeModel(mouse, g, 0.48, topY, 0.22, 0.22, 0);
+  solidColor(mouse, 0xe8e4dc);
+  mouse.scale.setScalar(1);
+  mouse.position.set(0, 0, 0);
+  fitWidth(mouse, 0.08);
+  g.add(mouse);
+  mouse.position.set(0.42, 0, 0.2);
+  sitOn(mouse, topY);
 
   if (id === "ai") {
-    imac(g, -0.25, topY + 0.18, -0.32, ideScreenTex(), 1);
-    imac(g, 0.45, topY + 0.18, -0.32, grassDesktopTex(), 0.9);
+    imac(g, -0.22, topY + 0.16, -0.3, ideScreenTex(), 0.95);
+    imac(g, 0.42, topY + 0.16, -0.3, grassDesktopTex(), 0.85);
     const plant = await loadKay("cactus_small_A");
-    placeModel(plant, g, -0.78, topY, 0.2, 0.4, 0);
+    placeFit(plant, g, -0.72, topY, 0.18, 0.28, 0);
   } else if (id === "write") {
-    imac(g, 0.05, topY + 0.18, -0.32, docScreenTex(), 1);
+    imac(g, 0.02, topY + 0.16, -0.3, docScreenTex(), 0.95);
     const books = await loadKay("book_set");
-    placeModel(books, g, -0.55, topY, 0.05, 0.65, 0.25);
+    placeFit(books, g, -0.5, topY, 0.05, 0.22, 0.25);
     const plant = await loadKen("plantSmall1");
-    placeModel(plant, g, -0.75, topY, -0.2, 0.35, 0);
+    placeFit(plant, g, -0.7, topY, -0.18, 0.3, 0);
   } else if (id === "design") {
-    // black drawing tablet
-    rbox(0.78, 0.04, 0.55, 0x2a2a32, 0.05, topY + 0.03, 0.08, g, 0.04);
-    addScreenPlane(g, designScreenTex(), 0.05, topY + 0.06, 0.08, 0.64, 0.42);
-    colorFan(g, -0.55, topY + 0.04, -0.2);
-    imac(g, 0.55, topY + 0.16, -0.35, grassDesktopTex(), 0.75);
+    // drawing tablet — deep blue-grey, not dead black
+    rbox(0.72, 0.035, 0.5, 0x3a4558, 0.02, topY + 0.025, 0.06, g, 0.04);
+    rbox(0.76, 0.02, 0.54, 0x4a5568, 0.02, topY + 0.012, 0.06, g, 0.03); // bezel
+    addScreenPlane(g, designScreenTex(), 0.02, topY + 0.05, 0.06, 0.6, 0.4);
+    colorFan(g, -0.5, topY + 0.035, -0.18);
+    imac(g, 0.52, topY + 0.14, -0.32, grassDesktopTex(), 0.7);
     const plant = await loadKay("cactus_medium_A");
-    placeModel(plant, g, -0.7, topY, -0.25, 0.35, 0);
+    placeFit(plant, g, -0.65, topY, -0.22, 0.32, 0);
   } else if (id === "grok") {
-    imac(g, 0.2, topY + 0.18, -0.32, checklistBoardTex(), 0.95);
+    imac(g, 0.18, topY + 0.16, -0.3, checklistBoardTex(), 0.9);
     const mini = new THREE.Mesh(
-      new RoundedBoxGeometry(0.45, 0.58, 0.05, 2, 0.03),
+      new RoundedBoxGeometry(0.4, 0.5, 0.045, 2, 0.03),
       toon(0xffffff, checklistBoardTex())
     );
-    mini.position.set(-0.55, topY + 0.35, -0.25);
+    mini.position.set(-0.5, topY + 0.3, -0.22);
     mini.castShadow = true;
     g.add(mini);
-    walkie(g, 0.55, topY + 0.16, 0.15);
+    walkie(g, 0.5, topY + 0.14, 0.12);
     const plant = await loadKay("cactus_small_A");
-    placeModel(plant, g, -0.78, topY, 0.22, 0.4, 0);
+    placeFit(plant, g, -0.72, topY, 0.2, 0.28, 0);
   }
 
   // mini pumpkin on every desk
@@ -1087,26 +1188,30 @@ async function deskSet(id, x, z, label) {
 }
 
 async function decorateWalls() {
-  // picture frames — denser back wall
-  const f1 = await loadKay("pictureframe_medium");
-  placeModel(f1, scene, -5.4, 3.35, -6.55, 1.05, 0);
-  addScreenPlane(scene, frameArtTex(30), -5.4, 3.5, -6.48, 0.52, 0.66);
-
-  const f2 = await loadKay("pictureframe_small_A");
-  placeModel(f2, scene, -4.55, 2.7, -6.55, 1.0, 0);
-  addScreenPlane(scene, frameArtTex(200), -4.55, 2.8, -6.48, 0.34, 0.4);
-
-  const f2b = await loadKay("pictureframe_small_A");
-  placeModel(f2b, scene, -4.0, 3.5, -6.55, 0.9, 0);
-  addScreenPlane(scene, frameArtTex(50), -4.0, 3.58, -6.48, 0.3, 0.36);
-
-  const f3 = await loadKay("pictureframe_large_A");
-  placeModel(f3, scene, 2.7, 3.05, -6.55, 0.85, 0);
-  addScreenPlane(scene, frameArtTex(280), 2.7, 3.2, -6.48, 0.65, 0.8);
-
-  const f4 = await loadKay("pictureframe_medium");
-  placeModel(f4, scene, 3.7, 2.55, -6.55, 0.85, 0);
-  addScreenPlane(scene, frameArtTex(160), 3.7, 2.68, -6.48, 0.42, 0.52);
+  // picture frames — wood frame only; light art plane covers dark atlas phase
+  async function wallFrame(name, x, y, z, targetH, artHue, artW, artH) {
+    const f = await loadKay(name);
+    // wood frame color; drop dark atlas so center never reads black
+    solidColor(f, 0xc4a574);
+    placeFit(f, scene, x, y, z, targetH, 0);
+    f.updateMatrixWorld(true);
+    const box = new THREE.Box3().setFromObject(f);
+    const c = new THREE.Vector3();
+    box.getCenter(c);
+    // light "photo paper" inset — covers any leftover dark phase
+    const paper = new THREE.Mesh(
+      new THREE.PlaneGeometry(artW * 1.05, artH * 1.05),
+      new THREE.MeshBasicMaterial({ color: 0xfff8ec })
+    );
+    paper.position.set(x, c.y, -6.5);
+    scene.add(paper);
+    addScreenPlane(scene, frameArtTex(artHue), x, c.y, -6.48, artW, artH);
+  }
+  await wallFrame("pictureframe_medium", -5.4, 3.0, -6.55, 0.95, 30, 0.48, 0.6);
+  await wallFrame("pictureframe_small_A", -4.55, 2.45, -6.55, 0.55, 200, 0.3, 0.36);
+  await wallFrame("pictureframe_small_A", -4.0, 3.2, -6.55, 0.5, 50, 0.28, 0.32);
+  await wallFrame("pictureframe_large_A", 2.7, 2.55, -6.55, 1.15, 280, 0.58, 0.72);
+  await wallFrame("pictureframe_medium", 3.7, 2.25, -6.55, 0.8, 160, 0.4, 0.5);
 
   // hanging ivy over window sides + left wall
   hangingIvy(-3.9, 4.55, -6.4, 0.7);
@@ -1114,84 +1219,84 @@ async function decorateWalls() {
   hangingIvy(-7.55, 4.2, -2.5, 1.1);
   hangingIvy(7.55, 4.2, 1.5, 0.9);
 
-  // wall plant shelf near window
+  // wall plant shelf near window (below window sill ~1.65)
   const shelf = await loadKay("shelf_A_small");
-  placeModel(shelf, scene, 0.85, 2.35, -6.5, 1.05, 0);
+  placeFit(shelf, scene, 0.85, 2.2, -6.5, 0.35, 0);
   const plant = await loadKay("cactus_small_A");
-  placeModel(plant, scene, 0.6, 2.5, -6.45, 0.5, 0);
+  placeFit(plant, scene, 0.6, 2.4, -6.45, 0.28, 0);
   const plant2 = await loadKay("cactus_medium_A");
-  placeModel(plant2, scene, 1.15, 2.5, -6.45, 0.38, 0.4);
+  placeFit(plant2, scene, 1.15, 2.4, -6.45, 0.32, 0.4);
   try {
     const ps = await loadKen("plantSmall2");
-    placeModel(ps, scene, 0.9, 2.5, -6.4, 0.3, 0);
+    placeFit(ps, scene, 0.9, 2.4, -6.4, 0.3, 0);
   } catch (_) {}
 
-  // tall bookshelf — Kenney bookcase + KayKit big shelf, packed with books
+  // Bookcase / shelf — height ≤ window lower edge (~1.65 sill, frames to ~4.5)
+  // Tall furniture ~2.4–2.5, below ceiling vibes
   try {
     const case1 = await loadKen("bookcaseOpenLow");
-    placeModel(case1, scene, -6.55, 0.18, -5.5, 1.35, 0.15);
+    placeFit(case1, scene, -6.55, 0.18, -5.5, 1.6, 0.15);
   } catch (_) {}
   const bigShelf = await loadKay("shelf_A_big");
-  placeModel(bigShelf, scene, -6.6, 0.18, -3.6, 1.15, Math.PI / 2);
-  colorfulBooksOnShelf(scene, -6.55, 0.85, -3.55, 8);
-  colorfulBooksOnShelf(scene, -6.55, 1.45, -3.55, 7);
-  colorfulBooksOnShelf(scene, -6.55, 2.05, -3.55, 6);
-  // plants on top of bookshelf
+  placeFit(bigShelf, scene, -6.6, 0.18, -3.6, 2.45, Math.PI / 2);
+  colorfulBooksOnShelf(scene, -6.55, 0.75, -3.55, 8);
+  colorfulBooksOnShelf(scene, -6.55, 1.35, -3.55, 7);
+  colorfulBooksOnShelf(scene, -6.55, 1.95, -3.55, 6);
   const topP = await loadKay("cactus_small_A");
-  placeModel(topP, scene, -6.55, 2.65, -3.3, 0.55, 0);
+  placeFit(topP, scene, -6.55, 2.55, -3.3, 0.28, 0);
   try {
     const topP2 = await loadKen("plantSmall3");
-    placeModel(topP2, scene, -6.55, 2.65, -3.9, 0.4, 0.3);
+    placeFit(topP2, scene, -6.55, 2.55, -3.9, 0.32, 0.3);
   } catch (_) {}
   const books2 = await loadKay("book_set");
-  placeModel(books2, scene, -6.5, 1.15, -5.35, 0.85, 0.2);
+  placeFit(books2, scene, -6.5, 1.05, -5.35, 0.28, 0.2);
   const single = await loadKay("book_single");
-  placeModel(single, scene, -6.45, 1.7, -5.55, 0.9, 0.1);
+  placeFit(single, scene, -6.45, 1.55, -5.55, 0.22, 0.1);
 
   // second cabinet / low shelf right back
   const cab = await loadKay("cabinet_small");
-  placeModel(cab, scene, 6.4, 0.18, -5.5, 1.15, -0.3);
+  placeFit(cab, scene, 6.4, 0.18, -5.5, 1.15, -0.3);
   const booksR = await loadKay("book_set");
-  placeModel(booksR, scene, 6.4, 1.2, -5.5, 0.75, -0.3);
-  colorfulBooksOnShelf(scene, 6.35, 1.55, -5.35, 5);
+  placeFit(booksR, scene, 6.4, 1.15, -5.5, 0.28, -0.3);
+  colorfulBooksOnShelf(scene, 6.35, 1.45, -5.35, 5);
   try {
     const shelfR = await loadKay("shelf_B_small");
-    placeModel(shelfR, scene, 6.55, 2.3, -4.2, 1.0, -Math.PI / 2);
+    placeFit(shelfR, scene, 6.55, 2.15, -4.2, 0.35, -Math.PI / 2);
     const pr = await loadKen("plantSmall1");
-    placeModel(pr, scene, 6.5, 2.45, -4.2, 0.35, 0);
+    placeFit(pr, scene, 6.5, 2.35, -4.2, 0.3, 0);
   } catch (_) {}
 
-  // standing lamps
+  // standing lamps — ≤ ~2.0, under window top
   const lamp = await loadKay("lamp_standing");
-  placeModel(lamp, scene, -6.4, 0.18, 3.6, 1.0, 0);
+  placeFit(lamp, scene, -6.4, 0.18, 3.6, 1.95, 0);
   const lamp2 = await loadKay("lamp_standing");
-  placeModel(lamp2, scene, 6.45, 0.18, 2.8, 0.95, Math.PI);
+  placeFit(lamp2, scene, 6.45, 0.18, 2.8, 1.9, Math.PI);
 
-  // large corner "tree" + floor plants
+  // corner plants — tall but under window (~1.8–2.1)
   try {
     const tree = await loadKen("pottedPlant");
-    placeModel(tree, scene, -6.5, 0.18, 5.0, 1.6, 0.2);
+    placeFit(tree, scene, -6.5, 0.18, 5.0, 2.0, 0.2);
   } catch (_) {
     const p1 = await loadKay("cactus_medium_A");
-    placeModel(p1, scene, -6.5, 0.18, 5.0, 1.6, 0);
+    placeFit(p1, scene, -6.5, 0.18, 5.0, 1.6, 0);
   }
   const p2 = await loadKay("cactus_medium_A");
-  placeModel(p2, scene, 6.5, 0.18, 4.4, 1.25, 0.5);
+  placeFit(p2, scene, 6.5, 0.18, 4.4, 1.4, 0.5);
   try {
     const p3 = await loadKen("pottedPlant");
-    placeModel(p3, scene, 6.3, 0.18, -1.8, 1.1, -0.4);
+    placeFit(p3, scene, 6.3, 0.18, -1.8, 1.7, -0.4);
   } catch (_) {}
   try {
     const p4 = await loadKen("plantSmall2");
-    placeModel(p4, scene, -5.8, 0.18, 5.4, 0.55, 0);
+    placeFit(p4, scene, -5.8, 0.18, 5.4, 0.55, 0);
   } catch (_) {}
 
   // side table props
   try {
     const st = await loadKen("sideTable");
-    placeModel(st, scene, -6.3, 0.18, 1.2, 0.9, 0.4);
+    placeFit(st, scene, -6.3, 0.18, 1.2, 0.7, 0.4);
     const bks = await loadKen("books");
-    placeModel(bks, scene, -6.3, 0.85, 1.2, 0.5, 0.2);
+    placeFit(bks, scene, -6.3, 0.75, 1.2, 0.18, 0.2);
   } catch (_) {}
 }
 
@@ -1259,15 +1364,15 @@ animate();
     await deskSet("ai", 3.5, -2.1, "開發");
     await deskSet("design", 3.5, 2.5, "美術");
     await deskSet("write", -3.5, 2.5, "策劃");
-    // photocopiers beside two desks (ACNH office density)
-    photocopier(-5.4, -0.6, 0.4);
-    photocopier(5.5, 1.0, -0.5);
+    // photocopiers — clear of desk hitboxes (desks at ±3.5)
+    photocopier(-6.2, -0.2, 0.35);
+    photocopier(6.3, 0.4, -0.4);
     // low coffee / prop table on rug edge
     try {
       const low = await loadKay("table_low");
-      placeModel(low, scene, 0.2, 0.18, 3.6, 0.9, 0.2);
+      placeFit(low, scene, 0.2, 0.18, 3.6, 0.45, 0.2);
       const books = await loadKay("book_set");
-      placeModel(books, scene, 0.15, 0.55, 3.55, 0.55, 0.3);
+      placeFit(books, scene, 0.15, 0.55, 3.55, 0.2, 0.3);
       deskCup(scene, 0.45, 0.62, 3.7, 0xff8a1f);
     } catch (_) {}
     // extra floor pumpkins for season
