@@ -3,7 +3,7 @@ import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.js";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 
-const HKT = "2026-10-31 00:25 HKT";
+const HKT = "2026-10-31 00:35 HKT";
 
 const people = {
   grok: {
@@ -154,36 +154,47 @@ function canvasTex(draw, w = 256, h = 256) {
   return t;
 }
 
-function tileTex() {
+function woodFloorTex() {
   return canvasTex((ctx, w, h) => {
-    ctx.fillStyle = "#D8D4CC";
+    ctx.fillStyle = "#D8D0C4";
     ctx.fillRect(0, 0, w, h);
-    const tile = 64;
-    for (let y = 0; y < h; y += tile) {
-      for (let x = 0; x < w; x += tile) {
-        const even = (x / tile + y / tile) % 2 === 0;
-        ctx.fillStyle = even ? "#EEEAE2" : "#C8C4BC";
-        ctx.fillRect(x + 2, y + 2, tile - 4, tile - 4);
-        ctx.strokeStyle = "rgba(120,110,100,0.45)";
-        ctx.lineWidth = 2;
-        ctx.strokeRect(x + 1, y + 1, tile - 2, tile - 2);
+    const plank = 28;
+    for (let y = 0; y < h; y += plank) {
+      const shade = 210 + ((y / plank) % 3) * 8;
+      ctx.fillStyle = `rgb(${shade},${shade - 8},${shade - 20})`;
+      ctx.fillRect(0, y + 1, w, plank - 2);
+      ctx.strokeStyle = "rgba(140,130,115,0.35)";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(0, y + plank);
+      ctx.lineTo(w, y + plank);
+      ctx.stroke();
+      // subtle grain
+      ctx.strokeStyle = "rgba(160,145,120,0.12)";
+      for (let x = 8; x < w; x += 40) {
+        ctx.beginPath();
+        ctx.moveTo(x, y + 4);
+        ctx.lineTo(x + 18, y + plank - 4);
+        ctx.stroke();
       }
     }
   });
 }
 function wallTex() {
   const t = canvasTex((ctx, w, h) => {
-    ctx.fillStyle = "#F3E7D7";
+    ctx.fillStyle = "#F7F2EA";
     ctx.fillRect(0, 0, w, h);
-    for (let x = 0; x < w; x += 32) {
-      ctx.fillStyle = "rgba(196,165,116,0.12)";
-      ctx.fillRect(x, 0, 2, h);
-      ctx.fillStyle = "rgba(255,252,245,0.25)";
-      ctx.fillRect(x + 3, 0, 12, h);
+    // soft vertical panels
+    for (let x = 0; x < w; x += 48) {
+      ctx.fillStyle = "rgba(255,255,255,0.45)";
+      ctx.fillRect(x + 2, 2, 42, h - 4);
+      ctx.strokeStyle = "rgba(200,185,160,0.35)";
+      ctx.lineWidth = 2;
+      ctx.strokeRect(x + 2, 2, 42, h - 4);
     }
   });
   t.wrapS = t.wrapT = THREE.RepeatWrapping;
-  t.repeat.set(6, 2.2);
+  t.repeat.set(5, 2);
   return t;
 }
 function daySkyTex() {
@@ -338,6 +349,54 @@ function frameArtTex(hue) {
     ctx.fillRect(30, h * 0.74, w - 60, 8);
   }, 128, 128);
 }
+/** ACNH-style colorful grass desktop wallpaper */
+function grassDesktopTex() {
+  return canvasTex((ctx, w, h) => {
+    const sky = ctx.createLinearGradient(0, 0, 0, h * 0.55);
+    sky.addColorStop(0, "#8EC8F0");
+    sky.addColorStop(1, "#C8E8F8");
+    ctx.fillStyle = sky;
+    ctx.fillRect(0, 0, w, h * 0.55);
+    ctx.fillStyle = "#FFE8A0";
+    ctx.beginPath();
+    ctx.arc(w * 0.78, h * 0.18, 18, 0, Math.PI * 2);
+    ctx.fill();
+    const hill = ctx.createLinearGradient(0, h * 0.4, 0, h);
+    hill.addColorStop(0, "#7BC97A");
+    hill.addColorStop(1, "#4FA85A");
+    ctx.fillStyle = hill;
+    ctx.beginPath();
+    ctx.moveTo(0, h * 0.55);
+    ctx.quadraticCurveTo(w * 0.25, h * 0.42, w * 0.5, h * 0.52);
+    ctx.quadraticCurveTo(w * 0.75, h * 0.62, w, h * 0.48);
+    ctx.lineTo(w, h);
+    ctx.lineTo(0, h);
+    ctx.fill();
+    // flowers
+    [[40, 110, "#F78FB3"], [90, 125, "#FF8A1F"], [150, 115, "#9B5CFF"], [200, 130, "#FFE066"]].forEach(([x, y, c]) => {
+      ctx.fillStyle = c;
+      ctx.beginPath();
+      ctx.arc(x, y, 5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = "#fff8ec";
+      ctx.beginPath();
+      ctx.arc(x, y, 2, 0, Math.PI * 2);
+      ctx.fill();
+    });
+  }, 256, 160);
+}
+function bookSpineTex(hue) {
+  return canvasTex((ctx, w, h) => {
+    ctx.fillStyle = `hsl(${hue},55%,55%)`;
+    ctx.fillRect(0, 0, w, h);
+    ctx.fillStyle = "rgba(255,255,255,0.25)";
+    ctx.fillRect(2, 0, 4, h);
+    ctx.fillStyle = "rgba(0,0,0,0.15)";
+    ctx.fillRect(0, h * 0.3, w, 3);
+    ctx.fillRect(0, h * 0.7, w, 2);
+  }, 32, 64);
+}
+
 /** IDE / code screen */
 function ideScreenTex() {
   return canvasTex((ctx, w, h) => {
@@ -565,9 +624,9 @@ function addScreenPlane(parent, map, x, y, z, w = 0.5, h = 0.32) {
 }
 
 // —— Room shell ——
-const floorMap = tileTex();
+const floorMap = woodFloorTex();
 floorMap.wrapS = floorMap.wrapT = THREE.RepeatWrapping;
-floorMap.repeat.set(5, 4.5);
+floorMap.repeat.set(4, 6);
 const floor = new THREE.Mesh(new THREE.BoxGeometry(16, 0.35, 14), toon(0xffffff, floorMap));
 floor.position.y = 0;
 floor.receiveShadow = true;
@@ -597,9 +656,12 @@ const rug = new THREE.Mesh(new THREE.CylinderGeometry(3.3, 3.3, 0.06, 48), toon(
 rug.position.set(0, 0.225, 0.35);
 rug.receiveShadow = true;
 scene.add(rug);
-const rugIn = new THREE.Mesh(new THREE.CylinderGeometry(2.4, 2.4, 0.065, 48), toon(0xffe0c0));
+const rugIn = new THREE.Mesh(new THREE.CylinderGeometry(2.4, 2.4, 0.065, 48), toon(0xffe8d0));
 rugIn.position.set(0, 0.24, 0.35);
 scene.add(rugIn);
+// softer outer ring (beige ACNH)
+rugOuter.material = toon(0xd4a574);
+rug.material = toon(0xf5d4b0);
 
 // Window + curtains
 rbox(4.4, 3.0, 0.18, 0xfff8ec, -1.9, 3.1, -6.62, scene, 0.06);
@@ -640,6 +702,42 @@ curtainPanel(-3.55);
 curtainPanel(-0.25);
 // curtain rod
 rbox(4.6, 0.06, 0.06, 0xc4a574, -1.9, 4.45, -6.42, scene, 0.02);
+
+// Left + right side windows (ACNH density — big daylight)
+function sideWindow(wallX, zCenter, facing) {
+  const depth = facing > 0 ? wallX - 0.12 : wallX + 0.12;
+  const paneZ = zCenter;
+  rbox(0.18, 2.6, 3.2, 0xfff8ec, wallX * 0.98, 3.0, paneZ, scene, 0.05);
+  rbox(0.12, 0.1, 3.3, 0xc4a574, depth, 4.25, paneZ, scene, 0.03);
+  rbox(0.12, 0.1, 3.3, 0xc4a574, depth, 1.75, paneZ, scene, 0.03);
+  const sky = new THREE.Mesh(
+    new THREE.PlaneGeometry(2.8, 2.2),
+    new THREE.MeshBasicMaterial({ map: daySkyTex(), side: THREE.DoubleSide })
+  );
+  sky.position.set(depth, 3.0, paneZ);
+  sky.rotation.y = facing > 0 ? -Math.PI / 2 : Math.PI / 2;
+  scene.add(sky);
+  // lace curtains pulled to edges
+  const cL = new THREE.Mesh(
+    new THREE.PlaneGeometry(0.7, 2.4),
+    new THREE.MeshToonMaterial({
+      map: cTex,
+      color: 0xfff8ec,
+      transparent: true,
+      opacity: 0.85,
+      side: THREE.DoubleSide,
+      depthWrite: false,
+    })
+  );
+  cL.position.set(depth + facing * 0.02, 2.95, paneZ - 1.1);
+  cL.rotation.y = facing > 0 ? -Math.PI / 2 : Math.PI / 2;
+  scene.add(cL);
+  const cR = cL.clone();
+  cR.position.z = paneZ + 1.1;
+  scene.add(cR);
+}
+sideWindow(-7.75, -1.5, -1);
+sideWindow(7.75, 0.8, 1);
 
 // Wall clock (larger / clearer)
 const clockBody = cyl(0.48, 0.48, 0.12, 0xc4a574, 1.9, 4.05, -6.55, scene, 24);
@@ -808,8 +906,72 @@ function walkie(g, x, y, z) {
   cyl(0.025, 0.025, 0.18, 0x3a4050, x, y + 0.22, z, g, 8);
   sphere(0.035, 0xff8a1f, x + 0.05, y + 0.06, z + 0.05, g);
 }
-function deskCup(g, x, y, z) {
-  cyl(0.07, 0.06, 0.12, 0xfff8ec, x, y, z, g, 12);
+function deskCup(g, x, y, z, color = 0xfff8ec) {
+  cyl(0.07, 0.06, 0.12, color, x, y, z, g, 12);
+}
+function paperStack(g, x, y, z) {
+  rbox(0.42, 0.02, 0.32, 0xfff8ec, x, y, z, g, 0.01);
+  rbox(0.4, 0.02, 0.3, 0xf0e8d8, x + 0.02, y + 0.025, z + 0.01, g, 0.01);
+  rbox(0.38, 0.02, 0.28, 0xfff8ec, x - 0.01, y + 0.05, z - 0.01, g, 0.01);
+}
+function bookEnds(g, x, y, z) {
+  rbox(0.06, 0.22, 0.16, 0xc4a574, x - 0.22, y + 0.11, z, g, 0.02);
+  rbox(0.06, 0.22, 0.16, 0xc4a574, x + 0.22, y + 0.11, z, g, 0.02);
+  rbox(0.12, 0.18, 0.14, 0x5b8def, x - 0.1, y + 0.09, z, g, 0.02);
+  rbox(0.1, 0.2, 0.14, 0xf78fb3, x + 0.02, y + 0.1, z, g, 0.02);
+  rbox(0.11, 0.16, 0.14, 0x6bcb77, x + 0.12, y + 0.08, z, g, 0.02);
+}
+/** iMac-style all-in-one with grass wallpaper */
+function imac(g, x, y, z, screenMap = null, scale = 1) {
+  const map = screenMap || grassDesktopTex();
+  const sw = 0.72 * scale;
+  const sh = 0.48 * scale;
+  // silver chin + body
+  rbox(sw + 0.06, sh + 0.1, 0.06, 0xe8e4dc, x, y + sh * 0.5, z, g, 0.03);
+  addScreenPlane(g, map, x, y + sh * 0.52, z + 0.035, sw * 0.92, sh * 0.82);
+  // chin bar
+  rbox(sw * 0.35, 0.035, 0.04, 0xd0ccc4, x, y + 0.04, z + 0.02, g, 0.01);
+  // stand
+  rbox(0.12 * scale, 0.22 * scale, 0.06, 0xd8d4cc, x, y - 0.02, z - 0.02, g, 0.02);
+  rbox(0.28 * scale, 0.04, 0.16 * scale, 0xd0ccc4, x, y - 0.12 * scale, z, g, 0.02);
+}
+function photocopier(x, z, rotY = 0) {
+  const g = new THREE.Group();
+  rbox(0.85, 0.55, 0.7, 0xf5f2ea, 0, 0.45, 0, g, 0.08);
+  rbox(0.75, 0.08, 0.55, 0xe8e4dc, 0, 0.78, 0, g, 0.04);
+  rbox(0.35, 0.05, 0.4, 0x5a6070, -0.15, 0.85, 0.05, g, 0.02);
+  rbox(0.22, 0.04, 0.18, 0x3a4050, 0.25, 0.84, 0.1, g, 0.02);
+  // paper out tray
+  rbox(0.5, 0.03, 0.25, 0xfff8ec, 0, 0.72, 0.4, g, 0.01);
+  cyl(0.03, 0.03, 0.04, 0x5b8def, 0.28, 0.9, -0.15, g, 8);
+  g.position.set(x, 0, z);
+  g.rotation.y = rotY;
+  scene.add(g);
+  return g;
+}
+function hangingIvy(x, y, z, w = 0.9) {
+  const g = new THREE.Group();
+  rbox(w, 0.06, 0.06, 0xc4a574, 0, 0, 0, g, 0.02);
+  for (let i = 0; i < 7; i++) {
+    const leaf = new THREE.Mesh(
+      new THREE.SphereGeometry(0.08 + (i % 3) * 0.02, 8, 8),
+      toon(i % 2 === 0 ? 0x5a9a3a : 0x6bcb77)
+    );
+    leaf.position.set(-w * 0.4 + i * (w / 6), -0.12 - (i % 3) * 0.1, 0.04);
+    leaf.scale.set(1.2, 0.55, 0.8);
+    leaf.castShadow = true;
+    g.add(leaf);
+  }
+  g.position.set(x, y, z);
+  scene.add(g);
+  return g;
+}
+function colorfulBooksOnShelf(parent, x, y, z, count = 6) {
+  const hues = [0xff8a1f, 0x5b8def, 0xf78fb3, 0x6bcb77, 0x9b5cff, 0xffe066, 0xe07050, 0x70c8e0];
+  for (let i = 0; i < count; i++) {
+    const h = 0.18 + (i % 3) * 0.045;
+    rbox(0.055, h, 0.13, hues[i % hues.length], x + i * 0.075 - count * 0.035, y + h * 0.5, z, parent, 0.01);
+  }
 }
 
 async function kenMonitor(parent, x, y, z, screenMap, scale = 0.22) {
@@ -827,75 +989,82 @@ async function deskSet(id, x, z, label) {
   const g = new THREE.Group();
   g.position.set(x, 0, z);
 
-  // KayKit desk (table_medium_long ≈ office desk)
+  // KayKit desk (wood + ivory drawer feel via toon)
   const desk = await loadKay("table_medium_long");
   placeModel(desk, g, 0, 0.18, 0, 0.72, 0);
+  // ivory drawer fronts
+  rbox(0.55, 0.18, 0.04, 0xfff8ec, -0.35, 0.55, 0.42, g, 0.03);
+  rbox(0.55, 0.18, 0.04, 0xfff8ec, 0.35, 0.55, 0.42, g, 0.03);
+  cyl(0.03, 0.03, 0.04, 0xc4a574, -0.35, 0.55, 0.45, g, 8);
+  cyl(0.03, 0.03, 0.04, 0xc4a574, 0.35, 0.55, 0.45, g, 8);
 
-  // KayKit chair tinted to role color
+  // KayKit chair tinted to role color (round office chair vibe)
   const chair = await loadKay("chair_A");
   tintModel(chair, p.color);
   placeModel(chair, g, 0, 0.18, 1.15, 1.05, Math.PI);
 
   const topY = 0.95;
 
+  // Shared per-desk density: lamp, papers, mug, keyboard, mini pumpkin
+  const lamp = await loadKay("lamp_table");
+  const lampX = id === "write" || id === "design" ? 0.62 : -0.68;
+  placeModel(lamp, g, lampX, topY, -0.28, 0.42, 0);
+  const lampL = new THREE.PointLight(0xffe8c0, 0.32, 2.4);
+  lampL.position.set(lampX, topY + 0.38, -0.15);
+  g.add(lampL);
+
+  paperStack(g, id === "grok" ? 0.35 : -0.15, topY + 0.02, 0.28);
+  bookEnds(g, id === "ai" ? 0.7 : -0.55, topY, -0.05);
+  deskCup(g, id === "design" ? -0.72 : 0.72, topY + 0.07, 0.35, p.color);
+
+  const kb = await loadKen("computerKeyboard");
+  placeModel(kb, g, 0.05, topY, 0.2, 0.2, 0);
+  const mouse = await loadKen("computerMouse");
+  placeModel(mouse, g, 0.48, topY, 0.22, 0.22, 0);
+
   if (id === "ai") {
-    await kenMonitor(g, -0.35, topY, -0.35, ideScreenTex(), 0.2);
-    await kenMonitor(g, 0.4, topY, -0.35, ideScreenTex(), 0.2);
-    const kb = await loadKen("computerKeyboard");
-    placeModel(kb, g, 0.05, topY, 0.15, 0.22, 0);
-    const mouse = await loadKen("computerMouse");
-    placeModel(mouse, g, 0.55, topY, 0.2, 0.25, 0);
-    deskCup(g, 0.75, topY + 0.07, 0.35);
+    imac(g, -0.25, topY + 0.18, -0.32, ideScreenTex(), 1);
+    imac(g, 0.45, topY + 0.18, -0.32, grassDesktopTex(), 0.9);
     const plant = await loadKay("cactus_small_A");
-    placeModel(plant, g, -0.75, topY, 0.25, 0.45, 0);
+    placeModel(plant, g, -0.78, topY, 0.2, 0.4, 0);
   } else if (id === "write") {
-    const lamp = await loadKay("lamp_table");
-    placeModel(lamp, g, 0.55, topY, -0.25, 0.45, 0);
-    const lampL = new THREE.PointLight(0xffe8c0, 0.35, 2.5);
-    lampL.position.set(0.55, topY + 0.4, -0.15);
-    g.add(lampL);
+    imac(g, 0.05, topY + 0.18, -0.32, docScreenTex(), 1);
     const books = await loadKay("book_set");
-    placeModel(books, g, -0.35, topY, 0.05, 0.7, 0.3);
-    // paper stack
-    rbox(0.45, 0.02, 0.35, 0xfff8ec, 0.1, topY + 0.02, 0.15, g, 0.01);
-    rbox(0.42, 0.02, 0.33, 0xf0e8d8, 0.12, topY + 0.04, 0.16, g, 0.01);
-    deskCup(g, -0.7, topY + 0.07, 0.32);
-    // small doc screen leaning
-    rbox(0.55, 0.4, 0.04, 0x5a6070, 0.15, topY + 0.28, -0.35, g, 0.03);
-    addScreenPlane(g, docScreenTex(), 0.15, topY + 0.28, -0.32, 0.48, 0.32);
+    placeModel(books, g, -0.55, topY, 0.05, 0.65, 0.25);
+    const plant = await loadKen("plantSmall1");
+    placeModel(plant, g, -0.75, topY, -0.2, 0.35, 0);
   } else if (id === "design") {
-    rbox(0.78, 0.055, 0.58, 0x5a6070, 0.05, topY + 0.03, 0.05, g, 0.05);
-    addScreenPlane(g, designScreenTex(), 0.05, topY + 0.08, 0.05, 0.64, 0.4);
-    // rotate flat on desk — use slightly tilted board
-    colorFan(g, -0.55, topY + 0.04, -0.15);
+    // black drawing tablet
+    rbox(0.78, 0.04, 0.55, 0x2a2a32, 0.05, topY + 0.03, 0.08, g, 0.04);
+    addScreenPlane(g, designScreenTex(), 0.05, topY + 0.06, 0.08, 0.64, 0.42);
+    colorFan(g, -0.55, topY + 0.04, -0.2);
+    imac(g, 0.55, topY + 0.16, -0.35, grassDesktopTex(), 0.75);
     const plant = await loadKay("cactus_medium_A");
-    placeModel(plant, g, 0.7, topY, -0.25, 0.4, 0);
-    deskCup(g, -0.7, topY + 0.07, 0.3);
+    placeModel(plant, g, -0.7, topY, -0.25, 0.35, 0);
   } else if (id === "grok") {
+    imac(g, 0.2, topY + 0.18, -0.32, checklistBoardTex(), 0.95);
     const mini = new THREE.Mesh(
-      new RoundedBoxGeometry(0.55, 0.7, 0.06, 2, 0.03),
+      new RoundedBoxGeometry(0.45, 0.58, 0.05, 2, 0.03),
       toon(0xffffff, checklistBoardTex())
     );
-    mini.position.set(-0.15, topY + 0.42, -0.28);
+    mini.position.set(-0.55, topY + 0.35, -0.25);
     mini.castShadow = true;
     g.add(mini);
-    rbox(0.08, 0.35, 0.08, 0xc4a574, -0.15, topY + 0.18, -0.22, g, 0.03);
-    walkie(g, 0.45, topY + 0.16, 0.15);
-    deskCup(g, 0.7, topY + 0.07, 0.32);
+    walkie(g, 0.55, topY + 0.16, 0.15);
     const plant = await loadKay("cactus_small_A");
-    placeModel(plant, g, -0.7, topY, 0.25, 0.4, 0);
+    placeModel(plant, g, -0.78, topY, 0.22, 0.4, 0);
   }
 
-  // mini pumpkin
-  sphere(0.1, 0xff8b3d, 0.78, topY + 0.09, 0.4, g, 0.85);
-  rbox(0.035, 0.05, 0.035, 0x5a9a3a, 0.78, topY + 0.18, 0.4, g, 0.01);
+  // mini pumpkin on every desk
+  sphere(0.1, 0xff8b3d, 0.82, topY + 0.09, 0.42, g, 0.85);
+  rbox(0.035, 0.05, 0.035, 0x5a9a3a, 0.82, topY + 0.18, 0.42, g, 0.01);
 
   const lampCol = p.status === "busy" ? 0xff8a1f : 0x6bcb77;
-  const bulb = sphere(0.11, lampCol, 0.72, 1.5, -0.4, g);
+  const bulb = sphere(0.1, lampCol, -0.82, 1.48, -0.35, g);
   bulb.material.emissive = new THREE.Color(lampCol);
   bulb.material.emissiveIntensity = 0.7;
-  const light = new THREE.PointLight(lampCol, 0.4, 3.5);
-  light.position.set(0.72, 1.5, -0.4);
+  const light = new THREE.PointLight(lampCol, 0.35, 3.2);
+  light.position.set(-0.82, 1.48, -0.35);
   g.add(light);
 
   const vill = villager(g, p.color);
@@ -918,42 +1087,112 @@ async function deskSet(id, x, z, label) {
 }
 
 async function decorateWalls() {
-  // picture frames
+  // picture frames — denser back wall
   const f1 = await loadKay("pictureframe_medium");
-  placeModel(f1, scene, -5.2, 3.2, -6.55, 1.1, 0);
-  addScreenPlane(scene, frameArtTex(30), -5.2, 3.35, -6.48, 0.55, 0.7);
+  placeModel(f1, scene, -5.4, 3.35, -6.55, 1.05, 0);
+  addScreenPlane(scene, frameArtTex(30), -5.4, 3.5, -6.48, 0.52, 0.66);
 
   const f2 = await loadKay("pictureframe_small_A");
-  placeModel(f2, scene, -4.4, 2.6, -6.55, 1.0, 0);
-  addScreenPlane(scene, frameArtTex(200), -4.4, 2.7, -6.48, 0.35, 0.42);
+  placeModel(f2, scene, -4.55, 2.7, -6.55, 1.0, 0);
+  addScreenPlane(scene, frameArtTex(200), -4.55, 2.8, -6.48, 0.34, 0.4);
+
+  const f2b = await loadKay("pictureframe_small_A");
+  placeModel(f2b, scene, -4.0, 3.5, -6.55, 0.9, 0);
+  addScreenPlane(scene, frameArtTex(50), -4.0, 3.58, -6.48, 0.3, 0.36);
 
   const f3 = await loadKay("pictureframe_large_A");
-  placeModel(f3, scene, 3.0, 3.0, -6.55, 0.9, 0);
-  addScreenPlane(scene, frameArtTex(280), 3.0, 3.15, -6.48, 0.7, 0.85);
+  placeModel(f3, scene, 2.7, 3.05, -6.55, 0.85, 0);
+  addScreenPlane(scene, frameArtTex(280), 2.7, 3.2, -6.48, 0.65, 0.8);
 
-  // wall plant shelf
+  const f4 = await loadKay("pictureframe_medium");
+  placeModel(f4, scene, 3.7, 2.55, -6.55, 0.85, 0);
+  addScreenPlane(scene, frameArtTex(160), 3.7, 2.68, -6.48, 0.42, 0.52);
+
+  // hanging ivy over window sides + left wall
+  hangingIvy(-3.9, 4.55, -6.4, 0.7);
+  hangingIvy(0.1, 4.55, -6.4, 0.7);
+  hangingIvy(-7.55, 4.2, -2.5, 1.1);
+  hangingIvy(7.55, 4.2, 1.5, 0.9);
+
+  // wall plant shelf near window
   const shelf = await loadKay("shelf_A_small");
-  placeModel(shelf, scene, 0.9, 2.4, -6.5, 1.0, 0);
+  placeModel(shelf, scene, 0.85, 2.35, -6.5, 1.05, 0);
   const plant = await loadKay("cactus_small_A");
-  placeModel(plant, scene, 0.7, 2.55, -6.45, 0.55, 0);
+  placeModel(plant, scene, 0.6, 2.5, -6.45, 0.5, 0);
   const plant2 = await loadKay("cactus_medium_A");
-  placeModel(plant2, scene, 1.15, 2.55, -6.45, 0.4, 0.4);
+  placeModel(plant2, scene, 1.15, 2.5, -6.45, 0.38, 0.4);
+  try {
+    const ps = await loadKen("plantSmall2");
+    placeModel(ps, scene, 0.9, 2.5, -6.4, 0.3, 0);
+  } catch (_) {}
 
-  // corner bookcase / cabinet
+  // tall bookshelf — Kenney bookcase + KayKit big shelf, packed with books
+  try {
+    const case1 = await loadKen("bookcaseOpenLow");
+    placeModel(case1, scene, -6.55, 0.18, -5.5, 1.35, 0.15);
+  } catch (_) {}
+  const bigShelf = await loadKay("shelf_A_big");
+  placeModel(bigShelf, scene, -6.6, 0.18, -3.6, 1.15, Math.PI / 2);
+  colorfulBooksOnShelf(scene, -6.55, 0.85, -3.55, 8);
+  colorfulBooksOnShelf(scene, -6.55, 1.45, -3.55, 7);
+  colorfulBooksOnShelf(scene, -6.55, 2.05, -3.55, 6);
+  // plants on top of bookshelf
+  const topP = await loadKay("cactus_small_A");
+  placeModel(topP, scene, -6.55, 2.65, -3.3, 0.55, 0);
+  try {
+    const topP2 = await loadKen("plantSmall3");
+    placeModel(topP2, scene, -6.55, 2.65, -3.9, 0.4, 0.3);
+  } catch (_) {}
+  const books2 = await loadKay("book_set");
+  placeModel(books2, scene, -6.5, 1.15, -5.35, 0.85, 0.2);
+  const single = await loadKay("book_single");
+  placeModel(single, scene, -6.45, 1.7, -5.55, 0.9, 0.1);
+
+  // second cabinet / low shelf right back
   const cab = await loadKay("cabinet_small");
-  placeModel(cab, scene, -6.5, 0.18, -5.2, 1.1, 0.4);
-  const books = await loadKay("book_set");
-  placeModel(books, scene, -6.5, 1.2, -5.2, 0.8, 0.4);
+  placeModel(cab, scene, 6.4, 0.18, -5.5, 1.15, -0.3);
+  const booksR = await loadKay("book_set");
+  placeModel(booksR, scene, 6.4, 1.2, -5.5, 0.75, -0.3);
+  colorfulBooksOnShelf(scene, 6.35, 1.55, -5.35, 5);
+  try {
+    const shelfR = await loadKay("shelf_B_small");
+    placeModel(shelfR, scene, 6.55, 2.3, -4.2, 1.0, -Math.PI / 2);
+    const pr = await loadKen("plantSmall1");
+    placeModel(pr, scene, 6.5, 2.45, -4.2, 0.35, 0);
+  } catch (_) {}
 
-  // standing lamp
+  // standing lamps
   const lamp = await loadKay("lamp_standing");
-  placeModel(lamp, scene, -6.4, 0.18, 3.8, 1.0, 0);
+  placeModel(lamp, scene, -6.4, 0.18, 3.6, 1.0, 0);
+  const lamp2 = await loadKay("lamp_standing");
+  placeModel(lamp2, scene, 6.45, 0.18, 2.8, 0.95, Math.PI);
 
-  // floor plants
-  const p1 = await loadKay("cactus_medium_A");
-  placeModel(p1, scene, -6.5, 0.18, 4.5, 1.2, 0);
+  // large corner "tree" + floor plants
+  try {
+    const tree = await loadKen("pottedPlant");
+    placeModel(tree, scene, -6.5, 0.18, 5.0, 1.6, 0.2);
+  } catch (_) {
+    const p1 = await loadKay("cactus_medium_A");
+    placeModel(p1, scene, -6.5, 0.18, 5.0, 1.6, 0);
+  }
   const p2 = await loadKay("cactus_medium_A");
-  placeModel(p2, scene, 6.5, 0.18, 4.2, 1.1, 0.5);
+  placeModel(p2, scene, 6.5, 0.18, 4.4, 1.25, 0.5);
+  try {
+    const p3 = await loadKen("pottedPlant");
+    placeModel(p3, scene, 6.3, 0.18, -1.8, 1.1, -0.4);
+  } catch (_) {}
+  try {
+    const p4 = await loadKen("plantSmall2");
+    placeModel(p4, scene, -5.8, 0.18, 5.4, 0.55, 0);
+  } catch (_) {}
+
+  // side table props
+  try {
+    const st = await loadKen("sideTable");
+    placeModel(st, scene, -6.3, 0.18, 1.2, 0.9, 0.4);
+    const bks = await loadKen("books");
+    placeModel(bks, scene, -6.3, 0.85, 1.2, 0.5, 0.2);
+  } catch (_) {}
 }
 
 function openPerson(id) {
@@ -1020,6 +1259,20 @@ animate();
     await deskSet("ai", 3.5, -2.1, "開發");
     await deskSet("design", 3.5, 2.5, "美術");
     await deskSet("write", -3.5, 2.5, "策劃");
+    // photocopiers beside two desks (ACNH office density)
+    photocopier(-5.4, -0.6, 0.4);
+    photocopier(5.5, 1.0, -0.5);
+    // low coffee / prop table on rug edge
+    try {
+      const low = await loadKay("table_low");
+      placeModel(low, scene, 0.2, 0.18, 3.6, 0.9, 0.2);
+      const books = await loadKay("book_set");
+      placeModel(books, scene, 0.15, 0.55, 3.55, 0.55, 0.3);
+      deskCup(scene, 0.45, 0.62, 3.7, 0xff8a1f);
+    } catch (_) {}
+    // extra floor pumpkins for season
+    pumpkin(-6.0, 2.8, 0.7);
+    pumpkin(5.8, -4.8, 0.55);
   } catch (err) {
     console.error("Asset load failed", err);
   }
