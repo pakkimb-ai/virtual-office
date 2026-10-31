@@ -60,10 +60,18 @@ const els = {
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0xa8daf0);
-scene.fog = new THREE.Fog(0xa8daf0, 34, 62);
+scene.fog = new THREE.Fog(0xa8daf0, 48, 92);
 
-const camera = new THREE.PerspectiveCamera(38, 1, 0.1, 100);
-const camHome = new THREE.Vector3(10.2, 10.8, 12.2);
+const camera = new THREE.PerspectiveCamera(38, 1, 0.1, 120);
+// ~38° above the horizon, front-right iso, far enough to hold the 22×18 room.
+const CAM_ELEV = 37 * Math.PI / 180;
+const CAM_AZ = 36 * Math.PI / 180;
+const CAM_DIST = 22;
+const camHome = new THREE.Vector3(
+  Math.sin(CAM_AZ) * Math.cos(CAM_ELEV) * CAM_DIST,
+  Math.sin(CAM_ELEV) * CAM_DIST + 0.45,
+  Math.cos(CAM_AZ) * Math.cos(CAM_ELEV) * CAM_DIST
+);
 camera.position.copy(camHome);
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -75,13 +83,13 @@ host.appendChild(renderer.domElement);
 
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
-controls.target.set(0, 0.85, 0.25);
+controls.target.set(0, 0.7, 0);
 controls.maxPolarAngle = Math.PI * 0.48;
-controls.minDistance = 8;
-controls.maxDistance = 26;
+controls.minDistance = 12;
+controls.maxDistance = 46;
 document.getElementById("btnReset").onclick = () => {
   camera.position.copy(camHome);
-  controls.target.set(0, 0.85, 0.25);
+  controls.target.set(0, 0.7, 0);
   controls.update();
 };
 
@@ -97,11 +105,11 @@ sun.position.set(4, 16, 6);
 sun.castShadow = true;
 sun.shadow.mapSize.set(1024, 1024);
 sun.shadow.camera.near = 1;
-sun.shadow.camera.far = 40;
-sun.shadow.camera.left = -12;
-sun.shadow.camera.right = 12;
-sun.shadow.camera.top = 12;
-sun.shadow.camera.bottom = -12;
+sun.shadow.camera.far = 70;
+sun.shadow.camera.left = -16;
+sun.shadow.camera.right = 16;
+sun.shadow.camera.top = 16;
+sun.shadow.camera.bottom = -16;
 scene.add(sun);
 const winLight = new THREE.PointLight(0xffe8c8, 0.55, 20);
 winLight.position.set(-2.0, 3.4, -4.2);
@@ -877,67 +885,62 @@ function addScreenPlane(parent, map, x, y, z, w = 0.5, h = 0.32) {
   return mesh;
 }
 
-// —— Room shell ——
+// —— Room shell (22 × 18 footprint) ——
+const ROOM_W = 22;
+const ROOM_D = 18;
+const HALF_W = ROOM_W / 2;
+const HALF_D = ROOM_D / 2;
+const WALL_T = 0.35;
+const BACK_Z = -(HALF_D - 0.15); // wall center
+const SIDE_X = HALF_W - 0.1;
+const HUG_Z = BACK_Z + 0.32; // props just inside the back wall
+
 const floorMap = woodFloorTex();
 floorMap.wrapS = floorMap.wrapT = THREE.RepeatWrapping;
-floorMap.repeat.set(4, 6);
-const floor = new THREE.Mesh(new THREE.BoxGeometry(16, 0.35, 14), toon(0xffffff, floorMap));
+floorMap.repeat.set(5.5, 7.7);
+const floor = new THREE.Mesh(new THREE.BoxGeometry(ROOM_W, 0.35, ROOM_D), toon(0xffffff, floorMap));
 floor.position.y = 0;
 floor.receiveShadow = true;
 scene.add(floor);
 
 const wMat = toon(0xffffff, wallTex());
-const back = new THREE.Mesh(new THREE.BoxGeometry(16, 5.2, 0.35), wMat);
-back.position.set(0, 2.6, -6.85);
+const back = new THREE.Mesh(new THREE.BoxGeometry(ROOM_W, 5.2, WALL_T), wMat);
+back.position.set(0, 2.6, BACK_Z);
 back.receiveShadow = true;
 scene.add(back);
-const left = new THREE.Mesh(new THREE.BoxGeometry(0.35, 5.2, 14), wMat);
-left.position.set(-7.9, 2.6, 0);
+const left = new THREE.Mesh(new THREE.BoxGeometry(WALL_T, 5.2, ROOM_D), wMat);
+left.position.set(-SIDE_X, 2.6, 0);
 scene.add(left);
 const right = left.clone();
-right.position.x = 7.9;
+right.position.x = SIDE_X;
 scene.add(right);
 
-rbox(16, 0.28, 0.18, 0xc4a574, 0, 0.32, -6.65, scene, 0.04);
-rbox(0.18, 0.28, 14, 0xc4a574, -7.7, 0.32, 0, scene, 0.04);
-rbox(0.18, 0.28, 14, 0xc4a574, 7.7, 0.32, 0, scene, 0.04);
+rbox(ROOM_W, 0.28, 0.18, 0xc4a574, 0, 0.32, BACK_Z + 0.2, scene, 0.04);
+rbox(0.18, 0.28, ROOM_D, 0xc4a574, -SIDE_X + 0.2, 0.32, 0, scene, 0.04);
+rbox(0.18, 0.28, ROOM_D, 0xc4a574, SIDE_X - 0.2, 0.32, 0, scene, 0.04);
 
-const rugOuter = new THREE.Mesh(new THREE.CylinderGeometry(3.6, 3.6, 0.05, 48), toon(0xc89060));
-rugOuter.position.set(0, 0.2, 0.35);
+// Center rug, diameter 7
+const RUG_R = 3.5;
+const rugOuter = new THREE.Mesh(new THREE.CylinderGeometry(RUG_R, RUG_R, 0.05, 48), toon(0xc89060));
+rugOuter.position.set(0, 0.2, 0);
 rugOuter.receiveShadow = true;
 scene.add(rugOuter);
-const rug = new THREE.Mesh(new THREE.CylinderGeometry(3.3, 3.3, 0.06, 48), toon(0xf0c9a0));
-rug.position.set(0, 0.225, 0.35);
+const rug = new THREE.Mesh(new THREE.CylinderGeometry(RUG_R - 0.28, RUG_R - 0.28, 0.06, 48), toon(0xf0c9a0));
+rug.position.set(0, 0.225, 0);
 rug.receiveShadow = true;
 scene.add(rug);
-const rugIn = new THREE.Mesh(new THREE.CylinderGeometry(2.4, 2.4, 0.065, 48), toon(0xffe8d0));
-rugIn.position.set(0, 0.24, 0.35);
+const rugIn = new THREE.Mesh(new THREE.CylinderGeometry(RUG_R - 1.15, RUG_R - 1.15, 0.065, 48), toon(0xffe8d0));
+rugIn.position.set(0, 0.24, 0);
 scene.add(rugIn);
 // softer outer ring (beige ACNH)
 rugOuter.material = toon(0xd4a574);
 rug.material = toon(0xf5d4b0);
 
-// Window + curtains
-rbox(4.4, 3.0, 0.18, 0xfff8ec, -1.9, 3.1, -6.62, scene, 0.06);
-rbox(4.5, 0.12, 0.12, 0xc4a574, -1.9, 4.55, -6.5, scene, 0.03);
-rbox(4.5, 0.12, 0.12, 0xc4a574, -1.9, 1.65, -6.5, scene, 0.03);
-rbox(0.12, 2.9, 0.12, 0xc4a574, -4.05, 3.1, -6.5, scene, 0.03);
-rbox(0.12, 2.9, 0.12, 0xc4a574, 0.25, 3.1, -6.5, scene, 0.03);
-rbox(0.1, 2.6, 0.08, 0xc4a574, -1.9, 3.1, -6.5, scene, 0.02);
-rbox(3.95, 0.1, 0.08, 0xc4a574, -1.9, 3.1, -6.5, scene, 0.02);
-const skyPane = new THREE.Mesh(
-  new THREE.PlaneGeometry(3.85, 2.5),
-  new THREE.MeshBasicMaterial({ map: daySkyTex() })
-);
-skyPane.position.set(-1.9, 3.1, -6.48);
-scene.add(skyPane);
-rbox(4.3, 0.1, 0.28, 0xc4a574, -1.9, 1.6, -6.4, scene, 0.04);
-
-// Lace / cloth curtains (pulled to sides)
+// Windows + lace curtains on the wider back wall
 const cTex = curtainTex();
-function curtainPanel(x) {
+function curtainPanel(x, z, w = 0.95, h = 2.7) {
   const m = new THREE.Mesh(
-    new THREE.PlaneGeometry(0.95, 2.7),
+    new THREE.PlaneGeometry(w, h),
     new THREE.MeshLambertMaterial({
       map: cTex,
       color: 0xfff8ec,
@@ -947,15 +950,33 @@ function curtainPanel(x) {
       depthWrite: false,
     })
   );
-  m.position.set(x, 3.05, -6.42);
+  m.position.set(x, 3.05, z);
   scene.add(m);
-  // rod ring
-  cyl(0.04, 0.04, 0.06, 0xc4a574, x, 4.42, -6.42, scene, 10);
+  cyl(0.04, 0.04, 0.06, 0xc4a574, x, 4.42, z, scene, 10);
+  return m;
 }
-curtainPanel(-3.55);
-curtainPanel(-0.25);
-// curtain rod
-rbox(4.6, 0.06, 0.06, 0xc4a574, -1.9, 4.45, -6.42, scene, 0.02);
+function backWindow(cx, W = 4.8) {
+  const z = BACK_Z;
+  rbox(W, 3.0, 0.18, 0xfff8ec, cx, 3.1, z + 0.23, scene, 0.06);
+  rbox(W + 0.1, 0.12, 0.12, 0xc4a574, cx, 4.55, z + 0.35, scene, 0.03);
+  rbox(W + 0.1, 0.12, 0.12, 0xc4a574, cx, 1.65, z + 0.35, scene, 0.03);
+  rbox(0.12, 2.9, 0.12, 0xc4a574, cx - W / 2 - 0.05, 3.1, z + 0.35, scene, 0.03);
+  rbox(0.12, 2.9, 0.12, 0xc4a574, cx + W / 2 + 0.05, 3.1, z + 0.35, scene, 0.03);
+  rbox(0.1, 2.6, 0.08, 0xc4a574, cx, 3.1, z + 0.35, scene, 0.02);
+  rbox(W - 0.5, 0.1, 0.08, 0xc4a574, cx, 3.1, z + 0.35, scene, 0.02);
+  const skyPane = new THREE.Mesh(
+    new THREE.PlaneGeometry(W - 0.55, 2.5),
+    new THREE.MeshBasicMaterial({ map: daySkyTex() })
+  );
+  skyPane.position.set(cx, 3.1, z + 0.37);
+  scene.add(skyPane);
+  rbox(W - 0.15, 0.1, 0.28, 0xc4a574, cx, 1.6, z + 0.45, scene, 0.04);
+  curtainPanel(cx - W / 2 + 0.55, z + 0.43);
+  curtainPanel(cx + W / 2 - 0.55, z + 0.43);
+  rbox(W + 0.25, 0.06, 0.06, 0xc4a574, cx, 4.45, z + 0.43, scene, 0.02);
+}
+backWindow(-6.4);
+backWindow(2.6, 4.4);
 
 // Left + right side windows (ACNH density — big daylight)
 function sideWindow(wallX, zCenter, facing) {
@@ -990,28 +1011,28 @@ function sideWindow(wallX, zCenter, facing) {
   cR.position.z = paneZ + 1.1;
   scene.add(cR);
 }
-sideWindow(-7.75, -1.5, -1);
-sideWindow(7.75, 0.8, 1);
+sideWindow(-(SIDE_X - 0.15), -2.2, -1);
+sideWindow(SIDE_X - 0.15, 1.4, 1);
 
-// Wall clock (larger / clearer)
-const clockBody = cyl(0.48, 0.48, 0.12, 0xc4a574, 1.9, 4.05, -6.55, scene, 24);
+// Wall clock (larger / clearer) — on the back wall, clear of the windows
+const clockBody = cyl(0.48, 0.48, 0.12, 0xc4a574, 6.6, 4.05, HUG_Z, scene, 24);
 clockBody.rotation.x = Math.PI / 2;
 const clockFace = new THREE.Mesh(
   new THREE.CircleGeometry(0.4, 32),
   new THREE.MeshBasicMaterial({ map: clockFaceTex() })
 );
-clockFace.position.set(1.9, 4.05, -6.46);
+clockFace.position.set(6.6, 4.05, HUG_Z + 0.09);
 scene.add(clockFace);
 
-// Shared wall preview screen
-rbox(1.7, 1.05, 0.08, 0x3a4050, 5.0, 3.5, -6.55, scene, 0.04);
+// Shared wall preview screen, right side of the back wall
+rbox(1.7, 1.05, 0.08, 0x3a4050, 8.8, 3.5, HUG_Z, scene, 0.04);
 const wallPreview = new THREE.Mesh(
   new THREE.PlaneGeometry(1.5, 0.88),
   new THREE.MeshBasicMaterial({ map: previewScreenTex(), toneMapped: false })
 );
-wallPreview.position.set(5.0, 3.5, -6.48);
+wallPreview.position.set(8.8, 3.5, HUG_Z + 0.07);
 scene.add(wallPreview);
-rbox(0.15, 0.08, 0.08, 0x9b5cff, 5.0, 2.9, -6.5, scene, 0.02);
+rbox(0.15, 0.08, 0.08, 0x9b5cff, 8.8, 2.9, HUG_Z + 0.05, scene, 0.02);
 
 // Tiny Halloween bat hangers (accent only)
 function batHang(x, y) {
@@ -1028,11 +1049,11 @@ function batHang(x, y) {
   wing2.rotation.z = -0.4;
   g.add(wing2);
   sphere(0.05, 0x3a2a38, 0, 0, 0.02, g);
-  g.position.set(x, y, -6.55);
+  g.position.set(x, y, HUG_Z);
   scene.add(g);
 }
-batHang(3.2, 4.5);
-batHang(3.55, 4.25);
+batHang(5.7, 4.5);
+batHang(6.05, 4.25);
 
 function standingWhiteboard(x, z, rotY = 0) {
   const g = new THREE.Group();
@@ -1052,7 +1073,7 @@ function standingWhiteboard(x, z, rotY = 0) {
   g.rotation.y = rotY;
   scene.add(g);
 }
-standingWhiteboard(5.9, -5.35, -0.35);
+standingWhiteboard(-2.2, BACK_Z + 1.25, 0);
 
 function waterCooler(x, z) {
   const g = new THREE.Group();
@@ -1066,14 +1087,14 @@ function waterCooler(x, z) {
   g.position.set(x, 0, z);
   scene.add(g);
 }
-waterCooler(6.65, -3.5);
+waterCooler(7.3, BACK_Z + 1.05);
 
 function pumpkin(x, z, s = 1) {
   sphere(0.32 * s, 0xff8b3d, x, 0.35 * s, z, scene, 0.85);
   rbox(0.08 * s, 0.14 * s, 0.08 * s, 0x5a9a3a, x, 0.58 * s, z, scene, 0.02);
 }
-pumpkin(-5.6, -5.6, 0.9);
-pumpkin(5.4, 4.6, 0.65);
+pumpkin(-9.4, -7.6, 0.9);
+pumpkin(9.2, 6.4, 0.65);
 
 const clickables = [];
 const floaters = [];
@@ -1219,10 +1240,11 @@ async function kenMonitor(parent, x, y, z, screenMap, scale = 0.22) {
   return mon;
 }
 
-async function deskSet(id, x, z, label) {
+async function deskSet(id, x, z, label, rotY = 0) {
   const p = people[id];
   const g = new THREE.Group();
   g.position.set(x, 0, z);
+  g.rotation.y = rotY;
 
   // Desk: light wood top; legs on floor (~0.18); surface ~0.92
   const TOP_Y = 0.92;
@@ -1363,67 +1385,69 @@ async function decorateWalls() {
       new THREE.PlaneGeometry(artW * 1.05, artH * 1.05),
       new THREE.MeshBasicMaterial({ color: 0xfff8ec })
     );
-    paper.position.set(x, c.y, -6.5);
+    paper.position.set(x, c.y, HUG_Z + 0.05);
     scene.add(paper);
-    addScreenPlane(scene, frameArtTex(artHue), x, c.y, -6.48, artW, artH);
+    addScreenPlane(scene, frameArtTex(artHue), x, c.y, HUG_Z + 0.07, artW, artH);
   }
-  await wallFrame("pictureframe_medium", -5.4, 3.0, -6.55, 0.95, 30, 0.48, 0.6);
-  await wallFrame("pictureframe_small_A", -4.55, 2.45, -6.55, 0.55, 200, 0.3, 0.36);
-  await wallFrame("pictureframe_small_A", -4.0, 3.2, -6.55, 0.5, 50, 0.28, 0.32);
-  await wallFrame("pictureframe_large_A", 2.7, 2.55, -6.55, 1.15, 280, 0.58, 0.72);
-  await wallFrame("pictureframe_medium", 3.7, 2.25, -6.55, 0.8, 160, 0.4, 0.5);
+  // Frames sit on the back wall, between and beside the windows — not over the rug.
+  await wallFrame("pictureframe_medium", -9.5, 3.15, HUG_Z, 0.95, 30, 0.48, 0.6);
+  await wallFrame("pictureframe_small_A", -8.6, 2.45, HUG_Z, 0.55, 200, 0.3, 0.36);
+  await wallFrame("pictureframe_small_A", -1.5, 3.35, HUG_Z, 0.5, 50, 0.28, 0.32);
+  await wallFrame("pictureframe_large_A", 5.15, 2.7, HUG_Z, 1.15, 280, 0.58, 0.72);
+  await wallFrame("pictureframe_medium", -3.15, 2.35, HUG_Z, 0.8, 160, 0.4, 0.5);
 
-  // hanging ivy over window sides + left wall
-  hangingIvy(-3.9, 4.55, -6.4, 0.7);
-  hangingIvy(0.1, 4.55, -6.4, 0.7);
-  hangingIvy(-7.55, 4.2, -2.5, 1.1);
-  hangingIvy(7.55, 4.2, 1.5, 0.9);
+  // hanging ivy over window sides + side walls
+  hangingIvy(-8.6, 4.55, HUG_Z + 0.15, 0.7);
+  hangingIvy(0.5, 4.55, HUG_Z + 0.15, 0.7);
+  hangingIvy(4.6, 4.55, HUG_Z + 0.15, 0.7);
+  hangingIvy(-SIDE_X + 0.35, 4.2, -3.2, 1.1);
+  hangingIvy(SIDE_X - 0.35, 4.2, 2.2, 0.9);
 
-  // window shelf — ivory + tiny bright pots (no black GLTF cactus)
-  rbox(1.1, 0.08, 0.28, 0xfff8ec, 0.85, 2.35, -6.5, scene, 0.03);
-  rbox(1.14, 0.04, 0.06, 0xc4a574, 0.85, 2.3, -6.38, scene, 0.02);
-  tinyPot(scene, 0.55, 2.39, -6.45, 0x5a9a3a, 0.85);
-  tinyPot(scene, 0.95, 2.39, -6.45, 0x6bcb77, 0.7);
-  tinyPot(scene, 1.25, 2.39, -6.45, 0x4a8a3a, 0.75);
+  // window shelf under the right-hand back window
+  rbox(1.1, 0.08, 0.28, 0xfff8ec, 2.6, 2.35, HUG_Z + 0.05, scene, 0.03);
+  rbox(1.14, 0.04, 0.06, 0xc4a574, 2.6, 2.3, HUG_Z + 0.17, scene, 0.02);
+  tinyPot(scene, 2.3, 2.39, HUG_Z + 0.1, 0x5a9a3a, 0.85);
+  tinyPot(scene, 2.7, 2.39, HUG_Z + 0.1, 0x6bcb77, 0.7);
+  tinyPot(scene, 3.0, 2.39, HUG_Z + 0.1, 0x4a8a3a, 0.75);
 
-  // Light hand-built bookcases (replaces black KayKit/Kenney shelves)
-  lightBookcase(-6.55, -5.35, 0.1, 2.05, 1.2, 0.45);
-  lightBookcase(-6.55, -3.7, Math.PI / 2, 2.05, 1.05, 0.42);
-  tinyPot(scene, -6.55, 2.25, -5.1, 0x5a9a3a, 0.9);
-  tinyPot(scene, -6.55, 2.25, -3.45, 0x6bcb77, 0.8);
+  // Light hand-built bookcases along the left wall
+  lightBookcase(-SIDE_X + 0.48, -6.5, -Math.PI / 2, 2.05, 1.2, 0.45);
+  lightBookcase(-SIDE_X + 0.48, -4.4, -Math.PI / 2, 2.05, 1.05, 0.42);
+  tinyPot(scene, -SIDE_X + 0.45, 2.25, -6.35, 0x5a9a3a, 0.9);
+  tinyPot(scene, -SIDE_X + 0.45, 2.25, -4.25, 0x6bcb77, 0.8);
 
-  // right: low ivory cabinet (hand) — no dark GLTF cabinet
-  rbox(0.95, 1.05, 0.5, 0xe8d4b8, 6.4, FLOOR_Y + 0.525, -5.5, scene, 0.06);
-  rbox(0.88, 0.04, 0.44, 0xfff8ec, 6.4, FLOOR_Y + 0.55, -5.5, scene, 0.02);
-  rbox(0.88, 0.04, 0.44, 0xfff8ec, 6.4, FLOOR_Y + 0.95, -5.5, scene, 0.02);
-  colorfulBooksOnShelf(scene, 6.35, FLOOR_Y + 1.0, -5.35, 6);
-  tinyPot(scene, 6.4, FLOOR_Y + 1.1, -5.5, 0x5a9a3a, 0.85);
-  rbox(0.7, 0.07, 0.24, 0xfff8ec, 6.55, 2.2, -4.2, scene, 0.03);
-  tinyPot(scene, 6.55, 2.24, -4.2, 0x6bcb77, 0.7);
+  // right: low ivory cabinet hugging the wall
+  rbox(0.95, 1.05, 0.5, 0xe8d4b8, SIDE_X - 0.72, FLOOR_Y + 0.525, -6.8, scene, 0.06);
+  rbox(0.88, 0.04, 0.44, 0xfff8ec, SIDE_X - 0.72, FLOOR_Y + 0.55, -6.8, scene, 0.02);
+  rbox(0.88, 0.04, 0.44, 0xfff8ec, SIDE_X - 0.72, FLOOR_Y + 0.95, -6.8, scene, 0.02);
+  colorfulBooksOnShelf(scene, SIDE_X - 0.75, FLOOR_Y + 1.0, -6.65, 6);
+  tinyPot(scene, SIDE_X - 0.72, FLOOR_Y + 1.1, -6.8, 0x5a9a3a, 0.85);
+  rbox(0.7, 0.07, 0.24, 0xfff8ec, SIDE_X - 0.4, 2.2, -5.2, scene, 0.03);
+  tinyPot(scene, SIDE_X - 0.4, 2.24, -5.2, 0x6bcb77, 0.7);
 
-  // standing lamps — ivory paint, height ≤ ~1.85
+  // standing lamps — ivory paint, height ≤ ~1.85, in the side aisles
   try {
     const lamp = await loadKay("lamp_standing");
     solidColor(lamp, 0xfff0e0);
-    placeFit(lamp, scene, -6.4, FLOOR_Y, 3.6, 1.85, 0);
+    placeFit(lamp, scene, -SIDE_X + 0.55, FLOOR_Y, 5.4, 1.85, 0);
   } catch (_) {}
   try {
     const lamp2 = await loadKay("lamp_standing");
     solidColor(lamp2, 0xfff0e0);
-    placeFit(lamp2, scene, 6.45, FLOOR_Y, 2.8, 1.8, Math.PI);
+    placeFit(lamp2, scene, SIDE_X - 0.5, FLOOR_Y, 4.2, 1.8, Math.PI);
   } catch (_) {}
 
   // Corner plants: ONLY tiny hand-built — no pottedPlant / big cactus
-  tinyPot(scene, -6.4, FLOOR_Y, 5.0, 0x5a9a3a, 1.6);
-  tinyPot(scene, -5.9, FLOOR_Y, 5.35, 0x6bcb77, 1.2);
-  tinyPot(scene, 6.4, FLOOR_Y, 4.4, 0x4a8a3a, 1.5);
-  tinyPot(scene, 6.2, FLOOR_Y, -1.8, 0x5a9a3a, 1.35);
+  tinyPot(scene, -SIDE_X + 0.55, FLOOR_Y, 7.2, 0x5a9a3a, 1.6);
+  tinyPot(scene, -SIDE_X + 1.05, FLOOR_Y, 7.55, 0x6bcb77, 1.2);
+  tinyPot(scene, SIDE_X - 0.55, FLOOR_Y, 6.6, 0x4a8a3a, 1.5);
+  tinyPot(scene, SIDE_X - 0.7, FLOOR_Y, -2.4, 0x5a9a3a, 1.35);
 
-  // side table — hand ivory
-  rbox(0.7, 0.55, 0.5, 0xe8d4b8, -6.3, FLOOR_Y + 0.275, 1.2, scene, 0.06);
-  rbox(0.72, 0.04, 0.52, 0xfff8ec, -6.3, FLOOR_Y + 0.56, 1.2, scene, 0.02);
-  colorfulBooksOnShelf(scene, -6.3, FLOOR_Y + 0.58, 1.25, 4);
-  deskCup(scene, -6.1, FLOOR_Y + 0.64, 1.35, 0xff8a1f);
+  // side table along the left wall
+  rbox(0.7, 0.55, 0.5, 0xe8d4b8, -SIDE_X + 0.65, FLOOR_Y + 0.275, 1.6, scene, 0.06);
+  rbox(0.72, 0.04, 0.52, 0xfff8ec, -SIDE_X + 0.65, FLOOR_Y + 0.56, 1.6, scene, 0.02);
+  colorfulBooksOnShelf(scene, -SIDE_X + 0.65, FLOOR_Y + 0.58, 1.65, 4);
+  deskCup(scene, -SIDE_X + 0.85, FLOOR_Y + 0.64, 1.75, 0xff8a1f);
 }
 function openPerson(id) {
   const p = people[id];
@@ -1486,25 +1510,26 @@ animate();
 (async function boot() {
   try {
     await decorateWalls();
-    // Four desks around the carpet (corners)
-    await deskSet("grok", -3.5, -2.1, "隊長");
-    await deskSet("ai", 3.5, -2.1, "開發");
-    await deskSet("design", 3.5, 2.5, "美術");
-    await deskSet("write", -3.5, 2.5, "策劃");
-    // photocopiers — clear of desk hitboxes (desks at ±3.5)
-    photocopier(-6.2, -0.2, 0.35);
-    photocopier(6.3, 0.4, -0.4);
-    // low coffee / prop table on rug edge
+    // Desk center sits 1.2 outside the rug (radius 3.5). Front is +Z.
+    // Chairs stay on the outer side: front desks face -Z, back desks are turned around.
+    const deskD = (RUG_R + 1.2) * Math.SQRT1_2;
+    await deskSet("ai", -deskD, deskD, "開發", 0);
+    await deskSet("design", deskD, deskD, "美術", 0);
+    await deskSet("write", -deskD, -deskD, "策劃", Math.PI);
+    await deskSet("grok", deskD, -deskD, "隊長", Math.PI);
+    // photocopiers along the side walls, clear of the desks
+    photocopier(-9.4, 0.15, 0.4);
+    photocopier(9.5, -0.3, -0.45);
+    // low table against the right wall — rug center stays clear
     try {
       const low = await loadKay("table_low");
-      placeFit(low, scene, 0.2, 0.18, 3.6, 0.45, 0.2);
+      placeFit(low, scene, SIDE_X - 1.15, 0.18, 1.1, 0.45, -0.4);
       const books = await loadKay("book_set");
-      placeFit(books, scene, 0.15, 0.55, 3.55, 0.2, 0.3);
-      deskCup(scene, 0.45, 0.62, 3.7, 0xff8a1f);
+      placeFit(books, scene, SIDE_X - 1.2, 0.55, 1.05, 0.2, 0.2);
+      deskCup(scene, SIDE_X - 0.95, 0.62, 1.25, 0xff8a1f);
     } catch (_) {}
-    // extra floor pumpkins for season
-    pumpkin(-6.0, 2.8, 0.7);
-    pumpkin(5.8, -4.8, 0.55);
+    pumpkin(-8.6, 4.2, 0.7);
+    pumpkin(8.4, -6.6, 0.55);
   } catch (err) {
     console.error("Asset load failed", err);
   }
