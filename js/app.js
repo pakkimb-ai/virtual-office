@@ -2,6 +2,7 @@ import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.js";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+import { clone as cloneSkeleton } from "three/addons/utils/SkeletonUtils.js";
 
 const HKT = "2026-10-31 01:35 HKT";
 
@@ -646,6 +647,95 @@ async function loadKen(name) {
   return deepClone(modelCache[key]);
 }
 
+/** Desk role → KayKit Adventurers file in assets/kaykit/chars/. */
+const ADVENTURER = {
+  ai: "Rogue", // 開發 #5b8def
+  design: "Mage", // 美術 #f78fb3
+  write: "Barbarian", // 策劃 #6bcb77
+  grok: "Knight", // 隊長 #ff8a1f
+};
+const CHAR_HEIGHT = 1.2;
+const KEEP_MESH = /_(ArmLeft|ArmRight|Body|Head|LegLeft|LegRight|Hat|Helmet|Cape)$/;
+const charMixers = [];
+
+/**
+ * Skinned clone of one adventurer. The GLB ships every weapon at once;
+ * those are removed so they cannot stack into a giant prop.
+ */
+async function loadAdventurer(file) {
+  const key = "adv:" + file;
+  if (!modelCache[key]) {
+    const gltf = await gltfLoader.loadAsync(`assets/kaykit/chars/${file}.glb`);
+    restyleLambert(gltf.scene);
+    modelCache[key] = gltf;
+  }
+  const gltf = modelCache[key];
+  const model = cloneSkeleton(gltf.scene);
+  const drop = [];
+  model.traverse((obj) => {
+    if (!obj.isMesh) return;
+    obj.castShadow = true;
+    obj.receiveShadow = true;
+    if (!KEEP_MESH.test(obj.name)) drop.push(obj);
+  });
+  drop.forEach((obj) => obj.removeFromParent());
+  const clip =
+    THREE.AnimationClip.findByName(gltf.animations, "Unarmed_Idle") ||
+    THREE.AnimationClip.findByName(gltf.animations, "Idle");
+  let mixer = null;
+  if (clip) {
+    mixer = new THREE.AnimationMixer(model);
+    mixer.clipAction(clip).play();
+    charMixers.push(mixer);
+  }
+  return { model, mixer };
+}
+
+/** Role tint as a flat Lambert color. The adventurer atlas has black bands that read as a black prop when multiplied. */
+function tintChar(model, hex) {
+  solidColor(model, hex);
+}
+
+/** World AABB. Skinned verts use the current pose; static meshes (hat, cape) use their bone matrix. */
+function posedBox(root) {
+  const box = new THREE.Box3();
+  const v = new THREE.Vector3();
+  root.updateMatrixWorld(true);
+  root.traverse((obj) => {
+    if (!obj.isMesh || !obj.visible || !obj.geometry) return;
+    const pos = obj.geometry.attributes.position;
+    if (!pos) return;
+    if (obj.isSkinnedMesh) {
+      for (let i = 0; i < pos.count; i++) {
+        obj.getVertexPosition(i, v);
+        v.applyMatrix4(obj.matrixWorld);
+        box.expandByPoint(v);
+      }
+    } else {
+      if (!obj.geometry.boundingBox) obj.geometry.computeBoundingBox();
+      box.union(obj.geometry.boundingBox.clone().applyMatrix4(obj.matrixWorld));
+    }
+  });
+  return box;
+}
+
+/** Fit the posed character to targetH and set the feet on yBase. */
+function placeAdventurer(model, parent, x, y, z, targetH, rotY, mixer) {
+  model.scale.setScalar(1);
+  model.position.set(0, 0, 0);
+  model.rotation.set(0, rotY, 0);
+  if (mixer) mixer.update(0);
+  const size = new THREE.Vector3();
+  posedBox(model).getSize(size);
+  if (size.y > 1e-6) model.scale.multiplyScalar(targetH / size.y);
+  model.position.set(x, 0, z);
+  parent.add(model);
+  if (mixer) mixer.update(0);
+  const box = posedBox(model);
+  model.position.y += y - box.min.y;
+  return model;
+}
+
 function placeModel(model, parent, x, y, z, scale = 1, rotY = 0) {
   model.scale.setScalar(scale);
   model.position.set(x, y, z);
@@ -977,25 +1067,6 @@ function roundRect(ctx, x, y, w, h, r) {
   ctx.closePath();
 }
 
-function villager(parent, color) {
-  const g = new THREE.Group();
-  const body = new THREE.Mesh(new RoundedBoxGeometry(0.52, 0.62, 0.38, 3, 0.12), toon(color));
-  body.position.y = 0.78;
-  body.castShadow = true;
-  g.add(body);
-  sphere(0.38, 0xffe0c0, 0, 1.42, 0, g);
-  sphere(0.11, color, -0.28, 1.62, 0, g);
-  sphere(0.11, color, 0.28, 1.62, 0, g);
-  sphere(0.055, 0x2a1f14, -0.12, 1.45, 0.32, g);
-  sphere(0.055, 0x2a1f14, 0.12, 1.45, 0.32, g);
-  sphere(0.055, 0xff9aa8, -0.22, 1.35, 0.28, g, 0.55);
-  sphere(0.055, 0xff9aa8, 0.22, 1.35, 0.28, g, 0.55);
-  rbox(0.16, 0.1, 0.22, 0x4a3428, -0.14, 0.12, 0.05, g, 0.04);
-  rbox(0.16, 0.1, 0.22, 0x4a3428, 0.14, 0.12, 0.05, g, 0.04);
-  g.position.set(0, 0, 1.05);
-  parent.add(g);
-  return g;
-}
 
 function clapboard(g, x, y, z) {
   const cg = new THREE.Group();
@@ -1207,7 +1278,10 @@ async function deskSet(id, x, z, label) {
   light.position.set(-0.82, 1.48, -0.35);
   g.add(light);
 
-  const vill = villager(g, p.color);
+  // Stand on the floor just in front of the chair (chair is at z=1.1), facing the desk.
+  const { model: vill, mixer } = await loadAdventurer(ADVENTURER[id]);
+  tintChar(vill, p.color);
+  placeAdventurer(vill, g, 0, FLOOR_Y, 1.0, CHAR_HEIGHT, Math.PI, mixer);
   floaters.push({ group: g, vill, busy: p.status === "busy", bulb });
 
   const plate = nameplate(label, p.color);
@@ -1348,7 +1422,9 @@ addEventListener("resize", resize);
 const clock = new THREE.Clock();
 function animate() {
   requestAnimationFrame(animate);
-  const t = clock.getElapsedTime();
+  const dt = clock.getDelta();
+  const t = clock.elapsedTime;
+  charMixers.forEach((m) => m.update(dt));
   floaters.forEach((f, i) => {
     if (f.busy) {
       f.group.position.y = Math.sin(t * 2 + i) * 0.04;
