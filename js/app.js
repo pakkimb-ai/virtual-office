@@ -62,15 +62,16 @@ const scene = new THREE.Scene();
 scene.background = new THREE.Color(0xa8daf0);
 scene.fog = new THREE.Fog(0xa8daf0, 48, 92);
 
-const camera = new THREE.PerspectiveCamera(38, 1, 0.1, 120);
-// ~38° above the horizon, front-right iso, far enough to hold the 22×18 room.
+const camera = new THREE.PerspectiveCamera(46, 1, 0.1, 120);
+// ~37° above the horizon, front-right iso. Distance is from the look target.
 const CAM_ELEV = 37 * Math.PI / 180;
 const CAM_AZ = 36 * Math.PI / 180;
-const CAM_DIST = 14.5;
+const CAM_DIST = 10.5;
+const camTarget = new THREE.Vector3(0, 0.35, 1.45);
 const camHome = new THREE.Vector3(
-  Math.sin(CAM_AZ) * Math.cos(CAM_ELEV) * CAM_DIST,
-  Math.sin(CAM_ELEV) * CAM_DIST + 0.45,
-  Math.cos(CAM_AZ) * Math.cos(CAM_ELEV) * CAM_DIST
+  camTarget.x + Math.sin(CAM_AZ) * Math.cos(CAM_ELEV) * CAM_DIST,
+  camTarget.y + Math.sin(CAM_ELEV) * CAM_DIST,
+  camTarget.z + Math.cos(CAM_AZ) * Math.cos(CAM_ELEV) * CAM_DIST
 );
 camera.position.copy(camHome);
 
@@ -83,13 +84,13 @@ host.appendChild(renderer.domElement);
 
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
-controls.target.set(0, 0.7, 0);
+controls.target.copy(camTarget);
 controls.maxPolarAngle = Math.PI * 0.48;
-controls.minDistance = 12;
+controls.minDistance = 8;
 controls.maxDistance = 46;
 document.getElementById("btnReset").onclick = () => {
   camera.position.copy(camHome);
-  controls.target.set(0, 0.7, 0);
+  controls.target.copy(camTarget);
   controls.update();
 };
 
