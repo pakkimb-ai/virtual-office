@@ -654,7 +654,7 @@ const ADVENTURER = {
   write: "Barbarian", // 策劃 #6bcb77
   grok: "Knight", // 隊長 #ff8a1f
 };
-const CHAR_HEIGHT = 1.2;
+const CHAR_HEIGHT = 1.35;
 const KEEP_MESH = /_(ArmLeft|ArmRight|Body|Head|LegLeft|LegRight|Hat|Helmet|Cape)$/;
 const charMixers = [];
 
