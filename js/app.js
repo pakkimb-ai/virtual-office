@@ -62,11 +62,11 @@ const scene = new THREE.Scene();
 scene.background = new THREE.Color(0xa8daf0);
 scene.fog = new THREE.Fog(0xa8daf0, 48, 92);
 
-const camera = new THREE.PerspectiveCamera(32, 1, 0.1, 120);
+const camera = new THREE.PerspectiveCamera(34, 1, 0.1, 120);
 // ~37° above the horizon, front-right iso. Distance is from the look target.
-const CAM_ELEV = 37 * Math.PI / 180;
+const CAM_ELEV = 34 * Math.PI / 180;
 const CAM_AZ = 6 * Math.PI / 180;
-const CAM_DIST = 9.5;
+const CAM_DIST = 10;
 const camTarget = new THREE.Vector3(0.4, 1.45, 2.65);
 const camHome = new THREE.Vector3(
   camTarget.x + Math.sin(CAM_AZ) * Math.cos(CAM_ELEV) * CAM_DIST,
