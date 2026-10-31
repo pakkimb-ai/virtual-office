@@ -66,7 +66,7 @@ const camera = new THREE.PerspectiveCamera(38, 1, 0.1, 120);
 // ~38° above the horizon, front-right iso, far enough to hold the 22×18 room.
 const CAM_ELEV = 37 * Math.PI / 180;
 const CAM_AZ = 36 * Math.PI / 180;
-const CAM_DIST = 22;
+const CAM_DIST = 14.5;
 const camHome = new THREE.Vector3(
   Math.sin(CAM_AZ) * Math.cos(CAM_ELEV) * CAM_DIST,
   Math.sin(CAM_ELEV) * CAM_DIST + 0.45,
