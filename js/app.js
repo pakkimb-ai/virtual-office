@@ -654,7 +654,8 @@ const ADVENTURER = {
   write: "Barbarian", // 策劃 #6bcb77
   grok: "Knight", // 隊長 #ff8a1f
 };
-const CHAR_HEIGHT = 1.35;
+/** Skull must clear the desktop by this much. Hats are not allowed to satisfy it. */
+const HEAD_CLEARANCE = 0.35;
 const KEEP_MESH = /_(ArmLeft|ArmRight|Body|Head|LegLeft|LegRight|Hat|Helmet|Cape)$/;
 const charMixers = [];
 
@@ -719,21 +720,67 @@ function posedBox(root) {
   return box;
 }
 
-/** Fit the posed character to targetH and set the feet on yBase. */
-function placeAdventurer(model, parent, x, y, z, targetH, rotY, mixer) {
+function sitFeet(model, floorY) {
+  const box = posedBox(model);
+  if (box.isEmpty()) return box;
+  model.position.y += floorY - box.min.y;
+  return box;
+}
+
+/**
+ * World Y of the head mesh. The upper tail (hood tip, hair spike) is ignored
+ * so a few high verts cannot pretend the skull is clear of the desk.
+ * Returns { crown, max, min } where crown is the median.
+ */
+function headExtent(model) {
+  model.updateMatrixWorld(true);
+  const ys = [];
+  const v = new THREE.Vector3();
+  model.traverse((obj) => {
+    if (!obj.isMesh || !obj.isSkinnedMesh || !/_Head$/.test(obj.name)) return;
+    const pos = obj.geometry.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+      obj.getVertexPosition(i, v);
+      v.applyMatrix4(obj.matrixWorld);
+      ys.push(v.y);
+    }
+  });
+  if (!ys.length) return null;
+  ys.sort((a, b) => a - b);
+  const at = (t) => ys[Math.min(ys.length - 1, Math.floor(t * (ys.length - 1)))];
+  return { min: at(0), crown: at(0.5), max: at(1) };
+}
+
+/**
+ * Stand the character, then scale (feet stay on the floor) until the skull
+ * crown is at least deskTopY + HEAD_CLEARANCE. Hat/helmet tips are not the crown.
+ */
+function placeAdventurer(model, parent, x, z, rotY, mixer, deskTopY) {
   model.scale.setScalar(1);
-  model.position.set(0, 0, 0);
-  model.rotation.set(0, rotY, 0);
-  if (mixer) mixer.update(0);
-  const size = new THREE.Vector3();
-  posedBox(model).getSize(size);
-  if (size.y > 1e-6) model.scale.multiplyScalar(targetH / size.y);
   model.position.set(x, 0, z);
+  model.rotation.set(0, rotY, 0);
   parent.add(model);
   if (mixer) mixer.update(0);
-  const box = posedBox(model);
-  model.position.y += y - box.min.y;
-  return model;
+  sitFeet(model, FLOOR_Y);
+
+  const goal = deskTopY + HEAD_CLEARANCE;
+  // One shot to the clearance, then a second pass after the feet are re-sat.
+  // Identity scale is taller than the desk; the previous hat-tip fit was shorter.
+  // Either way this lands the skull crown on deskTop + HEAD_CLEARANCE.
+  for (let i = 0; i < 2; i++) {
+    if (mixer) mixer.update(0);
+    const head = headExtent(model);
+    if (!head) break;
+    const span = head.crown - FLOOR_Y;
+    if (span < 1e-3) break;
+    if (Math.abs(head.crown - goal) < 1e-3) break;
+    model.scale.multiplyScalar((goal - FLOOR_Y) / span);
+    sitFeet(model, FLOOR_Y);
+  }
+  if (mixer) mixer.update(0);
+  const full = sitFeet(model, FLOOR_Y);
+  const head = headExtent(model);
+  return { full, head, goal };
 }
 
 function placeModel(model, parent, x, y, z, scale = 1, rotY = 0) {
@@ -1281,11 +1328,11 @@ async function deskSet(id, x, z, label) {
   // Stand on the floor just in front of the chair (chair is at z=1.1), facing the desk.
   const { model: vill, mixer } = await loadAdventurer(ADVENTURER[id]);
   tintChar(vill, p.color);
-  placeAdventurer(vill, g, 0, FLOOR_Y, 1.0, CHAR_HEIGHT, Math.PI, mixer);
+  const fit = placeAdventurer(vill, g, 0, 1.0, Math.PI, mixer, topY);
   floaters.push({ group: g, vill, busy: p.status === "busy", bulb });
 
   const plate = nameplate(label, p.color);
-  plate.position.set(0, 2.25, 0.3);
+  plate.position.set(0, Math.max(2.25, fit.full.max.y + 0.28), 0.3);
   g.add(plate);
 
   const hit = new THREE.Mesh(
