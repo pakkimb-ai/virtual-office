@@ -142,6 +142,29 @@ html, body {
 }
 .badge.busy { background: var(--busy); color: #3d2a20; }
 .badge.idle { background: var(--idle); color: #1a3d28; }
+.badge.error { background: #e85d4c; color: #fff6e8; }
+.badge.stale { background: #e6d3b0; color: #3d2a20; }
+
+.status-warn {
+  position: fixed;
+  top: calc(12px + var(--safe-t));
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 6;
+  margin: 0;
+  max-width: min(92vw, 720px);
+  padding: 6px 14px;
+  border-radius: 999px;
+  border: 2px solid rgba(61, 42, 32, 0.35);
+  background: rgba(255, 246, 232, 0.9);
+  color: #3d2a20;
+  font-size: 0.75rem;
+  font-weight: 800;
+  line-height: 1.35;
+  text-align: center;
+  pointer-events: none;
+}
+.status-warn[hidden] { display: none; }
 .role {
   margin: 4px 0 0;
   color: var(--muted);

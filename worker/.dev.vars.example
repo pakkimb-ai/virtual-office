@@ -1,0 +1,3 @@
+# Copy to .dev.vars for local `wrangler dev` only if you want to require a token.
+# Leave this unset to allow open POST on localhost.
+# STATUS_TOKEN=replace-with-a-local-token

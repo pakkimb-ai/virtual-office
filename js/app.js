@@ -3,6 +3,18 @@ import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.js";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { clone as cloneSkeleton } from "three/addons/utils/SkeletonUtils.js";
+import { STATUS_API } from "./status-config.js?v=18a1";
+import {
+  badgeView,
+  buildSpots,
+  decorateStatus,
+  goalForState,
+  lampFor,
+  resolveStatusApi,
+  segmentHitsAabb,
+  startStatusFeed,
+  warningLines,
+} from "./status.js?v=18a1";
 
 const HKT = "2026-10-31 01:35 HKT";
 
@@ -689,16 +701,23 @@ async function loadAdventurer(file) {
     if (!KEEP_MESH.test(obj.name)) drop.push(obj);
   });
   drop.forEach((obj) => obj.removeFromParent());
-  const clip =
-    THREE.AnimationClip.findByName(gltf.animations, "Unarmed_Idle") ||
-    THREE.AnimationClip.findByName(gltf.animations, "Idle");
-  let mixer = null;
-  if (clip) {
-    mixer = new THREE.AnimationMixer(model);
-    mixer.clipAction(clip).play();
-    charMixers.push(mixer);
-  }
-  return { model, mixer };
+  const mixer = new THREE.AnimationMixer(model);
+  const actions = {};
+  const bind = (key, clipName) => {
+    const clip = THREE.AnimationClip.findByName(gltf.animations, clipName);
+    if (!clip || actions[key]) return;
+    const action = mixer.clipAction(clip);
+    action.setLoop(THREE.LoopRepeat, Infinity);
+    actions[key] = action;
+  };
+  bind("stand", "Unarmed_Idle");
+  bind("stand", "Idle");
+  bind("walk", "Walking_A");
+  bind("sit", "Sit_Chair_Idle");
+  bind("sit", "Sit_Chair_Pose");
+  if (actions.stand) actions.stand.play();
+  charMixers.push(mixer);
+  return { model, mixer, actions };
 }
 
 /** Role tint as a flat Lambert color. The adventurer atlas has black bands that read as a black prop when multiplied. */
@@ -1136,6 +1155,180 @@ function roundRect(ctx, x, y, w, h, r) {
   ctx.closePath();
 }
 
+const actors = {};
+const warnEl = document.getElementById("statusWarn");
+const _bubblePos = new THREE.Vector3();
+const OBSTACLE = { hx: 1.2, hz: 0.82 };
+
+function statusBubble() {
+  const canvas = document.createElement("canvas");
+  canvas.width = 768;
+  canvas.height = 160;
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  const sprite = new THREE.Sprite(
+    new THREE.SpriteMaterial({ map: tex, depthTest: false, transparent: true })
+  );
+  sprite.renderOrder = 12;
+  sprite.visible = false;
+  sprite.userData.canvas = canvas;
+  sprite.userData.tex = tex;
+  sprite.userData.line = "";
+  scene.add(sprite);
+  return sprite;
+}
+
+function paintBubble(sprite, text) {
+  const line = text || "";
+  if (sprite.userData.line === line) return;
+  sprite.userData.line = line;
+  const canvas = sprite.userData.canvas;
+  const ctx = canvas.getContext("2d");
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  sprite.visible = line.length > 0;
+  if (!line) {
+    sprite.userData.tex.needsUpdate = true;
+    return;
+  }
+  ctx.font = "700 48px 'PingFang HK', 'Noto Sans TC', sans-serif";
+  const tw = ctx.measureText(line).width;
+  const w = Math.min(canvas.width - 16, tw + 72);
+  const h = 84;
+  const x = (canvas.width - w) / 2;
+  const y = 22;
+  ctx.fillStyle = "rgba(255,246,232,0.95)";
+  roundRect(ctx, x, y, w, h, 28);
+  ctx.fill();
+  ctx.lineWidth = 6;
+  ctx.strokeStyle = "#3d2a20";
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(canvas.width / 2 - 14, y + h - 1);
+  ctx.lineTo(canvas.width / 2, y + h + 18);
+  ctx.lineTo(canvas.width / 2 + 14, y + h - 1);
+  ctx.closePath();
+  ctx.fillStyle = "#fff6e8";
+  ctx.fill();
+  ctx.strokeStyle = "#3d2a20";
+  ctx.lineWidth = 5;
+  ctx.stroke();
+  ctx.fillStyle = "#3d2a20";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(line, canvas.width / 2, y + h / 2 + 1);
+  sprite.userData.tex.needsUpdate = true;
+  const worldW = Math.max(0.95, Math.min(3.1, w / 250));
+  sprite.scale.set(worldW, worldW * (canvas.height / canvas.width), 1);
+}
+
+function fadeTo(actor, name) {
+  if (actor.pose === name) return;
+  const next = actor.actions[name];
+  if (!next) return;
+  const prev = actor.actions[actor.pose];
+  next.enabled = true;
+  next.reset();
+  next.setEffectiveWeight(1);
+  next.setEffectiveTimeScale(1);
+  next.fadeIn(0.25);
+  next.play();
+  if (prev && prev !== next) prev.fadeOut(0.25);
+  actor.pose = name;
+}
+
+function dampAngle(current, target, dt) {
+  let delta = target - current;
+  while (delta > Math.PI) delta -= Math.PI * 2;
+  while (delta < -Math.PI) delta += Math.PI * 2;
+  return current + delta * Math.min(1, 8 * dt);
+}
+
+function planPoints(actor) {
+  const dest = actor.goal === "idle" ? actor.idlePos : actor.deskPos;
+  const pos = actor.model.position;
+  const { hx, hz } = OBSTACLE;
+  if (segmentHitsAabb(pos.x, pos.z, dest.x, dest.z, -hx, hx, -hz, hz)) {
+    return [actor.sidePos, dest];
+  }
+  return [dest];
+}
+
+function stepActor(actor, dt) {
+  if (!actor.goal) {
+    actor.settled = true;
+    return;
+  }
+  dt = Math.min(dt, 0.05);
+  const points = planPoints(actor);
+  let dest = points[0];
+  const pos = actor.model.position;
+  if (points[1] && Math.hypot(pos.x - dest.x, pos.z - dest.z) <= 0.12) dest = points[1];
+  const dx = dest.x - pos.x;
+  const dz = dest.z - pos.z;
+  const dist = Math.hypot(dx, dz);
+  const finalDest = points[points.length - 1];
+  const finalDist = Math.hypot(finalDest.x - pos.x, finalDest.z - pos.z);
+  if (finalDist <= 0.07 && dist <= 0.07) {
+    pos.x = finalDest.x;
+    pos.z = finalDest.z;
+    const face = actor.goal === "idle" ? actor.idleRot : actor.deskRot;
+    actor.model.rotation.y = dampAngle(actor.model.rotation.y, face, dt);
+    fadeTo(actor, actor.goal === "desk" && actor.actions.sit ? "sit" : "stand");
+    actor.settled = true;
+  } else {
+    actor.settled = false;
+    fadeTo(actor, actor.actions.walk ? "walk" : "stand");
+    if (dist > 1e-5) {
+      const step = Math.min(dist, 1.65 * dt);
+      pos.x += (dx / dist) * step;
+      pos.z += (dz / dist) * step;
+      actor.model.rotation.y = Math.atan2(dx, dz);
+    }
+  }
+  if (actor.live && actor.floater) {
+    actor.floater.busy = !!(actor.wantBusy && actor.settled && actor.goal === "desk");
+  }
+}
+
+function syncBubbles() {
+  for (const actor of Object.values(actors)) {
+    if (!actor.bubble.visible) continue;
+    actor.model.getWorldPosition(_bubblePos);
+    actor.bubble.position.set(_bubblePos.x, _bubblePos.y + actor.bubbleLift, _bubblePos.z);
+  }
+}
+
+function applyFeed(payload) {
+  const serverNow = Date.parse(payload && payload.serverTime);
+  const now = Number.isFinite(serverNow) ? serverNow : Date.now();
+  const windows = {
+    staleAfterMs: payload && payload.staleAfterMs,
+    silentAfterMs: payload && payload.silentAfterMs,
+  };
+  const views = [];
+  for (const row of (payload && payload.statuses) || []) {
+    const actor = row && actors[row.id];
+    if (!actor) continue;
+    const view = decorateStatus(row, now, windows);
+    views.push(view);
+    const goal = goalForState(view.state);
+    if (goal) actor.goal = goal;
+    actor.live = view;
+    paintBubble(actor.bubble, view.line);
+    const lamp = lampFor(view);
+    actor.wantBusy = lamp.busy;
+    if (actor.bulb && actor.bulb.material) {
+      actor.bulb.material.color.setHex(lamp.color);
+      if (actor.bulb.material.emissive) actor.bulb.material.emissive.setHex(lamp.color);
+    }
+  }
+  if (warnEl) {
+    const text = warningLines(views).join(" · ");
+    warnEl.textContent = text;
+    warnEl.hidden = !text;
+  }
+}
+
 
 function clapboard(g, x, y, z) {
   const cg = new THREE.Group();
@@ -1349,10 +1542,42 @@ async function deskSet(id, x, z, label, rotY = 0) {
   g.add(light);
 
   // Stand on the floor just in front of the chair (chair is at z=1.1), facing the desk.
-  const { model: vill, mixer } = await loadAdventurer(ADVENTURER[id]);
+  const { model: vill, mixer, actions } = await loadAdventurer(ADVENTURER[id]);
   tintChar(vill, p.color);
   const fit = placeAdventurer(vill, g, 0, 1.0, Math.PI, mixer, topY);
-  floaters.push({ group: g, vill, busy: p.status === "busy", bulb });
+  const floater = { group: g, vill, busy: p.status === "busy", bulb };
+  floaters.push(floater);
+  const spot = buildSpots({
+    groupX: x,
+    groupZ: z,
+    groupRotY: rotY,
+    charX: vill.position.x,
+    charZ: vill.position.z,
+    rugRadius: RUG_R,
+  });
+  const bubble = statusBubble();
+  const feetY = vill.position.y;
+  const crown = fit.head && fit.head.crown != null ? fit.head.crown : feetY + 1.15;
+  const top = fit.full && Number.isFinite(fit.full.max.y) ? fit.full.max.y : crown;
+  actors[id] = {
+    id,
+    model: vill,
+    actions,
+    pose: "stand",
+    goal: null,
+    settled: true,
+    live: null,
+    wantBusy: floater.busy,
+    floater,
+    bulb,
+    bubble,
+    bubbleLift: Math.max(1.05, top - feetY + 0.26),
+    deskPos: new THREE.Vector3(vill.position.x, vill.position.y, vill.position.z),
+    deskRot: vill.rotation.y,
+    sidePos: new THREE.Vector3(spot ? spot.sideX : vill.position.x, vill.position.y, spot ? spot.sideZ : vill.position.z),
+    idlePos: new THREE.Vector3(spot ? spot.idleX : vill.position.x, vill.position.y, spot ? spot.idleZ : vill.position.z),
+    idleRot: spot ? spot.idleRot : vill.rotation.y,
+  };
 
   const plate = nameplate(label, p.color);
   plate.position.set(0, Math.max(2.25, fit.full.max.y + 0.28), 0.3);
@@ -1457,8 +1682,9 @@ function openPerson(id) {
   if (els.role) els.role.textContent = p.role;
   els.motto.textContent = "「" + p.motto + "」";
   els.task.textContent = p.task;
-  els.badge.textContent = p.status === "busy" ? "忙緊" : "得閒";
-  els.badge.className = "badge " + (p.status === "busy" ? "busy" : "idle");
+  const badge = badgeView(actors[id] && actors[id].live, p.status === "busy");
+  els.badge.textContent = badge.text;
+  els.badge.className = "badge " + badge.kind;
   dlg.showModal?.() || dlg.setAttribute("open", "");
 }
 
@@ -1497,6 +1723,8 @@ function animate() {
   const dt = clock.getDelta();
   const t = clock.elapsedTime;
   charMixers.forEach((m) => m.update(dt));
+  for (const actor of Object.values(actors)) stepActor(actor, dt);
+  syncBubbles();
   floaters.forEach((f, i) => {
     if (f.busy) {
       f.group.position.y = Math.sin(t * 2 + i) * 0.04;
@@ -1531,6 +1759,8 @@ animate();
     } catch (_) {}
     pumpkin(-8.6, 4.2, 0.7);
     pumpkin(8.4, -6.6, 0.55);
+    const api = resolveStatusApi(window.location.href, STATUS_API);
+    startStatusFeed({ apiBase: api, onUpdate: applyFeed });
   } catch (err) {
     console.error("Asset load failed", err);
   }
