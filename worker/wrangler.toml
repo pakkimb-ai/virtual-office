@@ -1,0 +1,17 @@
+name = "virtual-office-status"
+main = "src/index.js"
+compatibility_date = "2026-11-01"
+
+# Optional. When set, POST /api/status requires:
+#   Authorization: Bearer <token>
+# Production: npx wrangler secret put STATUS_TOKEN
+# Local: worker/.dev.vars (gitignored) — leave unset for an open local board.
+
+[durable_objects]
+bindings = [
+  { name = "STATUS_BOARD", class_name = "StatusBoard" }
+]
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["StatusBoard"]
