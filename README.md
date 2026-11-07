@@ -77,7 +77,7 @@ curl -s "$API/api/status"
 
 ### 前端點樣接
 
-靜態頁仍然係 GitHub Pages。`js/status-config.js` 嘅 `STATUS_API` 指向 `https://virtual-office-status.pakkimb.workers.dev`（冇尾斜線），正式網址會自己連住 Worker。本機或者另一個 origin 可以加 query：
+靜態頁仍然係 GitHub Pages。`js/status-config.js` 嘅 `STATUS_API` 指向 `https://virtual-office-status.pakkimb-ai.workers.dev`（冇尾斜線），正式網址會自己連住 Worker。本機或者另一個 origin 可以加 query：
 
 ```text
 http://127.0.0.1:4173/?api=http://127.0.0.1:8787&v=18a2
