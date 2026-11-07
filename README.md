@@ -2,7 +2,7 @@
 
 萬聖節 Three.js 真 3D 辦公室（可拖轉／撳工位）。
 
-https://pakkimb-ai.github.io/virtual-office/?v=18a1
+https://pakkimb-ai.github.io/virtual-office/?v=18a2
 
 ## Assets（CC0）
 
@@ -77,16 +77,16 @@ curl -s "$API/api/status"
 
 ### 前端點樣接
 
-靜態頁仍然係 GitHub Pages。`js/status-config.js` 嘅 `STATUS_API` 而家係空，所以正式網址唔會自己郁。預覽時加 query：
+靜態頁仍然係 GitHub Pages。`js/status-config.js` 嘅 `STATUS_API` 指向 `https://virtual-office-status.pakkimb.workers.dev`（冇尾斜線），正式網址會自己連住 Worker。本機或者另一個 origin 可以加 query：
 
 ```text
-http://127.0.0.1:4173/?api=http://127.0.0.1:8787&v=18a1
-https://pakkimb-ai.github.io/virtual-office/?v=18a1&api=https://<your-worker>.workers.dev
+http://127.0.0.1:4173/?api=http://127.0.0.1:8787&v=18a2
+https://pakkimb-ai.github.io/virtual-office/?v=18a2&api=https://<your-worker>.workers.dev
 ```
 
 另一個終端機開靜態頁：`python3 -m http.server 4173`。頁面會 poll `GET /api/status`，同時訂 `WS /api/status/ws`。
 
-部署 Worker 之後，將 origin 寫入 `STATUS_API`（唔好加尾斜線），Pages 就唔使靠 `?api=`。
+`STATUS_API` 只填 origin，唔好加尾斜線。Pages 用呢個值，唔使靠 `?api=`。
 
 ```bash
 npm test

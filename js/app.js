@@ -3,7 +3,7 @@ import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.js";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { clone as cloneSkeleton } from "three/addons/utils/SkeletonUtils.js";
-import { STATUS_API } from "./status-config.js?v=18a1";
+import { STATUS_API } from "./status-config.js?v=18a2";
 import {
   badgeView,
   buildSpots,
@@ -14,7 +14,7 @@ import {
   segmentHitsAabb,
   startStatusFeed,
   warningLines,
-} from "./status.js?v=18a1";
+} from "./status.js?v=18a2";
 
 const HKT = "2026-10-31 01:35 HKT";
 
