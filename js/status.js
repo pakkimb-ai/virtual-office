@@ -321,21 +321,28 @@ const CELL = 0.25;
  * so the last step can land on the cushion. Returns world waypoints, last one
  * exactly the goal.
  */
-function pathIsClear(points, x, z, boxes) {
-  for (const p of points) {
-    if (segmentHitsAny(x, z, p.x, p.z, boxes)) return false;
-    x = p.x;
-    z = p.z;
+function pathIsClear(points, x, z, firstBoxes, restBoxes = firstBoxes) {
+  for (let i = 0; i < points.length; i++) {
+    const boxes = i === 0 ? firstBoxes : restBoxes;
+    if (segmentHitsAny(x, z, points[i].x, points[i].z, boxes)) return false;
+    x = points[i].x;
+    z = points[i].z;
   }
   return true;
 }
 
 export function routeAround(x0, z0, x1, z1, blockers = solidBlockers()) {
+  // The seat being sat on contains the start, so the first step may leave it.
+  // Every later step still treats that seat as solid, along with glass and desks.
   const boxes = [];
+  const occupied = [];
   for (const b of blockers) {
     if (containsPoint(b, x1, z1)) continue;
-    boxes.push(inflate(b, AGENT_RADIUS));
+    const inflated = inflate(b, AGENT_RADIUS);
+    if (b.kind === "seat" && containsPoint(b, x0, z0)) occupied.push(inflated);
+    else boxes.push(inflated);
   }
+  const routeBoxes = occupied.length ? boxes.concat(occupied) : boxes;
   if (!segmentHitsAny(x0, z0, x1, z1, boxes)) return [{ x: x1, z: z1 }];
 
   const { minX, maxX, minZ, maxZ } = WALK_BOUNDS;
@@ -346,7 +353,7 @@ export function routeAround(x0, z0, x1, z1, blockers = solidBlockers()) {
   const cz = (r) => minZ + (r + 0.5) * CELL;
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
-      if (boxes.some((b) => containsPoint(b, cx(c), cz(r)))) blocked[r * cols + c] = 1;
+      if (routeBoxes.some((b) => containsPoint(b, cx(c), cz(r)))) blocked[r * cols + c] = 1;
     }
   }
 
@@ -457,7 +464,7 @@ export function routeAround(x0, z0, x1, z1, blockers = solidBlockers()) {
     while (anchor < raw.length - 1) {
       let far = -1;
       for (let j = raw.length - 1; j > anchor; j--) {
-        if (!segmentHitsAny(raw[anchor].x, raw[anchor].z, raw[j].x, raw[j].z, boxes)) {
+        if (!segmentHitsAny(raw[anchor].x, raw[anchor].z, raw[j].x, raw[j].z, routeBoxes)) {
           far = j;
           break;
         }
@@ -477,7 +484,7 @@ export function routeAround(x0, z0, x1, z1, blockers = solidBlockers()) {
       const x = x0 + Math.sin(a) * dist;
       const z = z0 + Math.cos(a) * dist;
       if (x < minX || x > maxX || z < minZ || z > maxZ) continue;
-      if (boxes.some((b) => containsPoint(b, x, z))) continue;
+      if (routeBoxes.some((b) => containsPoint(b, x, z))) continue;
       if (segmentHitsAny(x0, z0, x, z, boxes)) continue;
       starts.push({ x, z });
     }
@@ -486,7 +493,7 @@ export function routeAround(x0, z0, x1, z1, blockers = solidBlockers()) {
     const path = seek(start.x, start.z);
     if (!path) continue;
     const stitched = start.x === x0 && start.z === z0 ? path : [start, ...path];
-    if (pathIsClear(stitched, x0, z0, boxes)) return stitched;
+    if (pathIsClear(stitched, x0, z0, boxes, routeBoxes)) return stitched;
   }
   return [{ x: x0, z: z0 }];
 }

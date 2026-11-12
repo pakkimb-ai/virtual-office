@@ -201,7 +201,19 @@ test("glass is solid except the door, and routes stay out of it", () => {
       assert.equal(pathHits(chair, path, glass), false, id + " clips glass going to " + spot.id);
       assert.equal(pathHits(chair, path, solids), false, id + " clips a solid going to " + spot.id);
       const back = routeAround(spot.x, spot.z, chair.x, chair.z, blockers);
+      const home = back[back.length - 1];
+      assert.ok(Math.hypot(home.x - chair.x, home.z - chair.z) < 1e-6, id + " returns from " + spot.id);
+      assert.ok(Math.hypot(home.x - spot.x, home.z - spot.z) > 1, id + " leaves " + spot.id);
       assert.equal(pathHits({ x: spot.x, z: spot.z }, back, glass), false, id + " clips glass going home");
+      assert.equal(pathHits({ x: spot.x, z: spot.z }, back, solids), false, id + " clips a solid going home");
+      const otherSeats = blockers.filter(
+        (b) => b.kind === "seat" && (spot.x < b.minX || spot.x > b.maxX || spot.z < b.minZ || spot.z > b.maxZ)
+      );
+      assert.equal(
+        pathHits({ x: spot.x, z: spot.z }, back, otherSeats),
+        false,
+        id + " clips another seat leaving " + spot.id
+      );
     }
   }
 
