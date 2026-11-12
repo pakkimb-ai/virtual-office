@@ -3,18 +3,25 @@ import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.js";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { clone as cloneSkeleton } from "three/addons/utils/SkeletonUtils.js";
-import { STATUS_API } from "./status-config.js?v=18a2";
+import { STATUS_API } from "./status-config.js?v=18b1";
 import {
+  assignLoungeSeats,
   badgeView,
-  buildSpots,
+  deskAnchor,
   decorateStatus,
+  GLASS_OFFICE,
   goalForState,
   lampFor,
+  localFromWorld,
+  LOUNGE,
+  OFFICE_DOOR,
   resolveStatusApi,
-  segmentHitsAabb,
+  routeAround,
+  solidBlockers,
   startStatusFeed,
   warningLines,
-} from "./status.js?v=18a2";
+  worldFromLocal,
+} from "./status.js?v=18b1";
 
 const HKT = "2026-10-31 01:35 HKT";
 
@@ -74,12 +81,13 @@ const scene = new THREE.Scene();
 scene.background = new THREE.Color(0xa8daf0);
 scene.fog = new THREE.Fog(0xa8daf0, 48, 92);
 
-const camera = new THREE.PerspectiveCamera(34, 1, 0.1, 120);
-// ~37° above the horizon, front-right iso. Distance is from the look target.
-const CAM_ELEV = 34 * Math.PI / 180;
-const CAM_AZ = 6 * Math.PI / 180;
-const CAM_DIST = 10;
-const camTarget = new THREE.Vector3(0.4, 1.45, 2.65);
+const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 140);
+// Wider and higher than the v18 close-up so the northeast glass office
+// and the southwest lounge both sit inside the default frame.
+const CAM_ELEV = 46 * Math.PI / 180;
+const CAM_AZ = 10 * Math.PI / 180;
+const CAM_DIST = 30;
+const camTarget = new THREE.Vector3(0.85, 0.55, 0.55);
 const camHome = new THREE.Vector3(
   camTarget.x + Math.sin(CAM_AZ) * Math.cos(CAM_ELEV) * CAM_DIST,
   camTarget.y + Math.sin(CAM_ELEV) * CAM_DIST,
@@ -715,6 +723,8 @@ async function loadAdventurer(file) {
   bind("walk", "Walking_A");
   bind("sit", "Sit_Chair_Idle");
   bind("sit", "Sit_Chair_Pose");
+  bind("lounge", "Sit_Floor_Idle");
+  bind("lounge", "Sit_Floor_Pose");
   if (actions.stand) actions.stand.play();
   charMixers.push(mixer);
   return { model, mixer, actions };
@@ -1113,8 +1123,8 @@ function pumpkin(x, z, s = 1) {
   sphere(0.32 * s, 0xff8b3d, x, 0.35 * s, z, scene, 0.85);
   rbox(0.08 * s, 0.14 * s, 0.08 * s, 0x5a9a3a, x, 0.58 * s, z, scene, 0.02);
 }
-pumpkin(-9.4, -7.6, 0.9);
-pumpkin(9.2, 6.4, 0.65);
+pumpkin(-10.15, -5.65, 0.7);
+pumpkin(10.2, 2.7, 0.55);
 
 const clickables = [];
 const floaters = [];
@@ -1158,7 +1168,8 @@ function roundRect(ctx, x, y, w, h, r) {
 const actors = {};
 const warnEl = document.getElementById("statusWarn");
 const _bubblePos = new THREE.Vector3();
-const OBSTACLE = { hx: 1.2, hz: 0.82 };
+const WALK_BLOCKERS = solidBlockers();
+let loungeAssign = {};
 
 function statusBubble() {
   const canvas = document.createElement("canvas");
@@ -1246,11 +1257,14 @@ function dampAngle(current, target, dt) {
 function planPoints(actor) {
   const dest = actor.goal === "idle" ? actor.idlePos : actor.deskPos;
   const pos = actor.model.position;
-  const { hx, hz } = OBSTACLE;
-  if (segmentHitsAabb(pos.x, pos.z, dest.x, dest.z, -hx, hx, -hz, hz)) {
-    return [actor.sidePos, dest];
-  }
-  return [dest];
+  const [sx, sz] = worldFromLocal(actor.groupX, actor.groupZ, actor.groupRot, pos.x, pos.z);
+  const [dx, dz] = worldFromLocal(actor.groupX, actor.groupZ, actor.groupRot, dest.x, dest.z);
+  const path = routeAround(sx, sz, dx, dz, WALK_BLOCKERS);
+  if (!path.length) return [new THREE.Vector3(dest.x, dest.y, dest.z)];
+  return path.map((p) => {
+    const [lx, lz] = localFromWorld(actor.groupX, actor.groupZ, actor.groupRot, p.x, p.z);
+    return new THREE.Vector3(lx, dest.y, lz);
+  });
 }
 
 function stepActor(actor, dt) {
@@ -1259,12 +1273,23 @@ function stepActor(actor, dt) {
     return;
   }
   dt = Math.min(dt, 0.05);
-  const points = planPoints(actor);
-  let dest = points[0];
+  const dest = actor.goal === "idle" ? actor.idlePos : actor.deskPos;
+  const key = actor.goal + "|" + (actor.loungeSeat || "") + "|" + dest.x.toFixed(3) + "|" + dest.z.toFixed(3);
+  if (actor.planKey !== key) {
+    actor.planKey = key;
+    actor.waypoints = planPoints(actor);
+    actor.wp = 0;
+  }
+  const points = actor.waypoints && actor.waypoints.length ? actor.waypoints : [dest];
+  if (actor.wp >= points.length) actor.wp = points.length - 1;
+  let destPt = points[actor.wp];
   const pos = actor.model.position;
-  if (points[1] && Math.hypot(pos.x - dest.x, pos.z - dest.z) <= 0.12) dest = points[1];
-  const dx = dest.x - pos.x;
-  const dz = dest.z - pos.z;
+  if (actor.wp < points.length - 1 && Math.hypot(pos.x - destPt.x, pos.z - destPt.z) <= 0.14) {
+    actor.wp += 1;
+    destPt = points[actor.wp];
+  }
+  const dx = destPt.x - pos.x;
+  const dz = destPt.z - pos.z;
   const dist = Math.hypot(dx, dz);
   const finalDest = points[points.length - 1];
   const finalDist = Math.hypot(finalDest.x - pos.x, finalDest.z - pos.z);
@@ -1273,7 +1298,10 @@ function stepActor(actor, dt) {
     pos.z = finalDest.z;
     const face = actor.goal === "idle" ? actor.idleRot : actor.deskRot;
     actor.model.rotation.y = dampAngle(actor.model.rotation.y, face, dt);
-    fadeTo(actor, actor.goal === "desk" && actor.actions.sit ? "sit" : "stand");
+    // Desk keeps Sit_Chair_Idle. Lounge uses Sit_Floor_Idle, lifted onto the cushion;
+    // on the floor that clip sits in front of the seat instead of on it.
+    if (actor.goal === "idle" && actor.actions.lounge) fadeTo(actor, "lounge");
+    else fadeTo(actor, actor.actions.sit ? "sit" : "stand");
     actor.settled = true;
   } else {
     actor.settled = false;
@@ -1285,8 +1313,32 @@ function stepActor(actor, dt) {
       actor.model.rotation.y = Math.atan2(dx, dz);
     }
   }
+  const standY = actor.deskPos.y;
+  const yGoal = actor.settled && actor.goal === "idle" ? standY + 0.22 : standY;
+  pos.y += (yGoal - pos.y) * Math.min(1, 8 * dt);
   if (actor.live && actor.floater) {
     actor.floater.busy = !!(actor.wantBusy && actor.settled && actor.goal === "desk");
+  }
+}
+
+function syncLoungeSeats() {
+  const idleIds = [];
+  for (const actor of Object.values(actors)) {
+    if (actor.goal === "idle") idleIds.push(actor.id);
+  }
+  loungeAssign = assignLoungeSeats(idleIds, loungeAssign);
+  const byId = new Map();
+  for (const spot of LOUNGE.seats) byId.set(spot.id, spot);
+  byId.set(LOUNGE.overflow.id, LOUNGE.overflow);
+  for (const actor of Object.values(actors)) {
+    if (actor.goal !== "idle") continue;
+    const spot = byId.get(loungeAssign[actor.id]);
+    if (!spot || actor.loungeSeat === spot.id) continue;
+    const [lx, lz] = localFromWorld(actor.groupX, actor.groupZ, actor.groupRot, spot.x, spot.z);
+    actor.loungeSeat = spot.id;
+    actor.idlePos.set(lx, actor.deskPos.y, lz);
+    actor.idleRot = spot.yaw - actor.groupRot;
+    actor.planKey = "";
   }
 }
 
@@ -1294,7 +1346,8 @@ function syncBubbles() {
   for (const actor of Object.values(actors)) {
     if (!actor.bubble.visible) continue;
     actor.model.getWorldPosition(_bubblePos);
-    actor.bubble.position.set(_bubblePos.x, _bubblePos.y + actor.bubbleLift, _bubblePos.z);
+    const lift = actor.bubbleLift - (actor.pose === "lounge" ? 0.26 : 0);
+    actor.bubble.position.set(_bubblePos.x, _bubblePos.y + lift, _bubblePos.z);
   }
 }
 
@@ -1322,6 +1375,7 @@ function applyFeed(payload) {
       if (actor.bulb.material.emissive) actor.bulb.material.emissive.setHex(lamp.color);
     }
   }
+  syncLoungeSeats();
   if (warnEl) {
     const text = warningLines(views).join(" · ");
     warnEl.textContent = text;
@@ -1547,14 +1601,6 @@ async function deskSet(id, x, z, label, rotY = 0) {
   const fit = placeAdventurer(vill, g, 0, 1.0, Math.PI, mixer, topY);
   const floater = { group: g, vill, busy: p.status === "busy", bulb };
   floaters.push(floater);
-  const spot = buildSpots({
-    groupX: x,
-    groupZ: z,
-    groupRotY: rotY,
-    charX: vill.position.x,
-    charZ: vill.position.z,
-    rugRadius: RUG_R,
-  });
   const bubble = statusBubble();
   const feetY = vill.position.y;
   const crown = fit.head && fit.head.crown != null ? fit.head.crown : feetY + 1.15;
@@ -1572,11 +1618,17 @@ async function deskSet(id, x, z, label, rotY = 0) {
     bulb,
     bubble,
     bubbleLift: Math.max(1.05, top - feetY + 0.26),
+    groupX: x,
+    groupZ: z,
+    groupRot: rotY,
+    loungeSeat: null,
+    planKey: "",
+    waypoints: null,
+    wp: 0,
     deskPos: new THREE.Vector3(vill.position.x, vill.position.y, vill.position.z),
     deskRot: vill.rotation.y,
-    sidePos: new THREE.Vector3(spot ? spot.sideX : vill.position.x, vill.position.y, spot ? spot.sideZ : vill.position.z),
-    idlePos: new THREE.Vector3(spot ? spot.idleX : vill.position.x, vill.position.y, spot ? spot.idleZ : vill.position.z),
-    idleRot: spot ? spot.idleRot : vill.rotation.y,
+    idlePos: new THREE.Vector3(vill.position.x, vill.position.y, vill.position.z),
+    idleRot: vill.rotation.y,
   };
 
   const plate = nameplate(label, p.color);
@@ -1636,11 +1688,11 @@ async function decorateWalls() {
   tinyPot(scene, 2.7, 2.39, HUG_Z + 0.1, 0x6bcb77, 0.7);
   tinyPot(scene, 3.0, 2.39, HUG_Z + 0.1, 0x4a8a3a, 0.75);
 
-  // Light hand-built bookcases along the left wall
-  lightBookcase(-SIDE_X + 0.48, -6.5, -Math.PI / 2, 2.05, 1.2, 0.45);
-  lightBookcase(-SIDE_X + 0.48, -4.4, -Math.PI / 2, 2.05, 1.05, 0.42);
-  tinyPot(scene, -SIDE_X + 0.45, 2.25, -6.35, 0x5a9a3a, 0.9);
-  tinyPot(scene, -SIDE_X + 0.45, 2.25, -4.25, 0x6bcb77, 0.8);
+  // Bookcases stay on the left wall, clear of the lounge seats.
+  lightBookcase(-SIDE_X + 0.48, 3.55, -Math.PI / 2, 2.05, 1.2, 0.45);
+  lightBookcase(-SIDE_X + 0.48, -4.85, -Math.PI / 2, 2.05, 1.05, 0.42);
+  tinyPot(scene, -SIDE_X + 0.45, 2.25, 3.4, 0x5a9a3a, 0.9);
+  tinyPot(scene, -SIDE_X + 0.45, 2.25, -4.7, 0x6bcb77, 0.8);
 
   // right: low ivory cabinet hugging the wall
   rbox(0.95, 1.05, 0.5, 0xe8d4b8, SIDE_X - 0.72, FLOOR_Y + 0.525, -6.8, scene, 0.06);
@@ -1666,7 +1718,7 @@ async function decorateWalls() {
   // Corner plants: ONLY tiny hand-built — no pottedPlant / big cactus
   tinyPot(scene, -SIDE_X + 0.55, FLOOR_Y, 7.2, 0x5a9a3a, 1.6);
   tinyPot(scene, -SIDE_X + 1.05, FLOOR_Y, 7.55, 0x6bcb77, 1.2);
-  tinyPot(scene, SIDE_X - 0.55, FLOOR_Y, 6.6, 0x4a8a3a, 1.5);
+  tinyPot(scene, 10.15, FLOOR_Y, 8.48, 0x4a8a3a, 1.15);
   tinyPot(scene, SIDE_X - 0.7, FLOOR_Y, -2.4, 0x5a9a3a, 1.35);
 
   // side table along the left wall
@@ -1736,16 +1788,205 @@ function animate() {
 }
 animate();
 
+function buildGlassOffice() {
+  const o = GLASS_OFFICE;
+  const door = OFFICE_DOOR;
+  const g = new THREE.Group();
+  const H = 2.52;
+  const y0 = FLOOR_Y;
+  const y1 = y0 + H;
+  const midY = (y0 + y1) / 2;
+  const post = 0.08;
+  const metal = new THREE.MeshLambertMaterial({ color: 0x8a9aa8 });
+  const wood = new THREE.MeshLambertMaterial({ color: 0xc4a574 });
+  const glassMat = new THREE.MeshLambertMaterial({
+    color: 0xe8f4f8,
+    transparent: true,
+    opacity: 0.35,
+    side: THREE.DoubleSide,
+    depthWrite: false,
+  });
+
+  function addBox(w, h, d, mat, x, y, z, shadow = true) {
+    const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
+    mesh.position.set(x, y, z);
+    mesh.castShadow = shadow;
+    mesh.receiveShadow = shadow;
+    g.add(mesh);
+    return mesh;
+  }
+  function postAt(x, z) {
+    addBox(post, H, post, metal, x, midY, z);
+  }
+  postAt(o.minX, o.minZ);
+  postAt(o.maxX, o.minZ);
+  postAt(o.minX, o.maxZ);
+  postAt(o.maxX, o.maxZ);
+  postAt(door.minX, o.minZ);
+  postAt(door.maxX, o.minZ);
+
+  const southL = door.minX - o.minX;
+  const southR = o.maxX - door.maxX;
+  addBox(o.maxX - o.minX, 0.06, post, metal, (o.minX + o.maxX) / 2, y1 - 0.03, o.maxZ);
+  addBox(post, 0.06, o.maxZ - o.minZ, metal, o.minX, y1 - 0.03, (o.minZ + o.maxZ) / 2);
+  addBox(post, 0.06, o.maxZ - o.minZ, metal, o.maxX, y1 - 0.03, (o.minZ + o.maxZ) / 2);
+  addBox(southL, 0.06, post, metal, o.minX + southL / 2, y1 - 0.03, o.minZ);
+  addBox(southR, 0.06, post, metal, door.maxX + southR / 2, y1 - 0.03, o.minZ);
+
+  const paneH = H - 0.36;
+  const paneY = y0 + 0.22 + paneH / 2;
+  function pane(w, d, x, z) {
+    const mesh = addBox(w, paneH, d, glassMat, x, paneY, z, false);
+    mesh.renderOrder = 3;
+    mesh.castShadow = false;
+    mesh.receiveShadow = false;
+  }
+  pane(o.maxX - o.minX - post, 0.02, (o.minX + o.maxX) / 2, o.maxZ);
+  pane(0.02, o.maxZ - o.minZ - post, o.minX, (o.minZ + o.maxZ) / 2);
+  pane(0.02, o.maxZ - o.minZ - post, o.maxX, (o.minZ + o.maxZ) / 2);
+  pane(Math.max(0.2, southL - post), 0.02, o.minX + southL / 2, o.minZ);
+  pane(Math.max(0.2, southR - post), 0.02, door.maxX + southR / 2, o.minZ);
+
+  function base(w, d, x, z) {
+    addBox(w, 0.24, d, wood, x, y0 + 0.12, z);
+  }
+  base(o.maxX - o.minX, 0.1, (o.minX + o.maxX) / 2, o.maxZ);
+  base(0.1, o.maxZ - o.minZ, o.minX, (o.minZ + o.maxZ) / 2);
+  base(0.1, o.maxZ - o.minZ, o.maxX, (o.minZ + o.maxZ) / 2);
+  base(southL, 0.1, o.minX + southL / 2, o.minZ);
+  base(southR, 0.1, door.maxX + southR / 2, o.minZ);
+
+  addBox(0.1, H - 0.08, 0.12, wood, door.minX, y0 + (H - 0.08) / 2, o.minZ);
+  addBox(0.1, H - 0.08, 0.12, wood, door.maxX, y0 + (H - 0.08) / 2, o.minZ);
+  addBox(door.maxX - door.minX + 0.1, 0.1, 0.12, wood, (door.minX + door.maxX) / 2, y1 - 0.1, o.minZ);
+
+  const leafW = Math.min(1.15, southL - 0.18);
+  if (leafW > 0.4) {
+    const leaf = new THREE.Group();
+    const slab = new THREE.Mesh(new THREE.BoxGeometry(leafW, 1.9, 0.045), wood);
+    slab.position.y = y0 + 0.95;
+    slab.castShadow = true;
+    leaf.add(slab);
+    const win = new THREE.Mesh(new THREE.BoxGeometry(leafW * 0.5, 0.62, 0.012), glassMat);
+    win.position.set(0, y0 + 1.28, 0.03);
+    win.renderOrder = 3;
+    leaf.add(win);
+    leaf.position.set(o.minX + 0.14 + leafW / 2, 0, o.minZ - 0.11);
+    g.add(leaf);
+  }
+
+  function mullion(w, d, x, z) {
+    addBox(w, H - 0.42, d, metal, x, midY, z);
+  }
+  mullion(0.045, 0.06, o.minX + (o.maxX - o.minX) * 0.33, o.maxZ);
+  mullion(0.045, 0.06, o.minX + (o.maxX - o.minX) * 0.66, o.maxZ);
+  const zSpan = o.maxZ - o.minZ;
+  mullion(0.06, 0.045, o.minX, o.minZ + zSpan * 0.38);
+  mullion(0.06, 0.045, o.minX, o.minZ + zSpan * 0.7);
+
+  scene.add(g);
+}
+
+function buildLounge() {
+  const fabric = new THREE.MeshLambertMaterial({ color: 0xc4a574 });
+  const fabricDeep = new THREE.MeshLambertMaterial({ color: 0xa68455 });
+  const cushion = new THREE.MeshLambertMaterial({ color: 0xd7bc96 });
+  const wood = new THREE.MeshLambertMaterial({ color: 0xc4a574 });
+  const woodLight = new THREE.MeshLambertMaterial({ color: 0xd7b48a });
+  const seatTop = 0.4;
+
+  const rug = LOUNGE.rug;
+  const rugMesh = new THREE.Mesh(
+    new THREE.CircleGeometry(1, 40),
+    new THREE.MeshLambertMaterial({ color: 0xd9c4a8 })
+  );
+  rugMesh.rotation.x = -Math.PI / 2;
+  rugMesh.position.set(rug.x, 0.205, rug.z);
+  rugMesh.scale.set(rug.w / 2, rug.d / 2, 1);
+  rugMesh.receiveShadow = true;
+  scene.add(rugMesh);
+
+  const s = LOUNGE.sofa;
+  const g = new THREE.Group();
+  g.position.set(s.x, 0, s.z);
+  const legH = 0.22;
+  for (const lx of [-s.w / 2 + 0.14, s.w / 2 - 0.14]) {
+    for (const lz of [-s.d / 2 + 0.12, s.d / 2 - 0.12]) {
+      const leg = new THREE.Mesh(new THREE.BoxGeometry(0.08, legH, 0.08), wood);
+      leg.position.set(lx, FLOOR_Y + legH / 2, lz);
+      leg.castShadow = true;
+      g.add(leg);
+    }
+  }
+  const base = new THREE.Mesh(new THREE.BoxGeometry(s.w, 0.12, s.d), fabricDeep);
+  base.position.set(0, FLOOR_Y + legH + 0.06, 0);
+  base.castShadow = true;
+  base.receiveShadow = true;
+  g.add(base);
+  const cush = new THREE.Mesh(new THREE.BoxGeometry(s.w - 0.36, 0.14, s.d - 0.2), cushion);
+  cush.position.set(0, seatTop - 0.07, 0.04);
+  cush.castShadow = true;
+  cush.receiveShadow = true;
+  g.add(cush);
+  const seam = new THREE.Mesh(new THREE.BoxGeometry(0.045, 0.15, s.d - 0.26), fabricDeep);
+  seam.position.set(0, seatTop - 0.06, 0.04);
+  g.add(seam);
+  const back = new THREE.Mesh(new THREE.BoxGeometry(s.w, 0.82, 0.2), fabric);
+  back.position.set(0, seatTop + 0.34, -s.d / 2 + 0.12);
+  back.castShadow = true;
+  g.add(back);
+  for (const lx of [-s.w / 2 + 0.11, s.w / 2 - 0.11]) {
+    const arm = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.32, s.d - 0.1), fabric);
+    arm.position.set(lx, seatTop + 0.02, 0.02);
+    arm.castShadow = true;
+    g.add(arm);
+  }
+  for (const lx of [-0.65, 0.65]) {
+    const pillow = new THREE.Mesh(new THREE.SphereGeometry(0.16, 14, 10), fabric);
+    pillow.scale.set(1.2, 0.75, 0.8);
+    pillow.position.set(lx, seatTop + 0.16, -0.16);
+    pillow.castShadow = true;
+    g.add(pillow);
+  }
+  scene.add(g);
+
+  function stool(x, z, radius) {
+    const sg = new THREE.Group();
+    for (let k = 0; k < 4; k++) {
+      const a = (k * Math.PI) / 2 + Math.PI / 4;
+      const legH = Math.max(0.16, seatTop - FLOOR_Y - 0.08);
+      const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.045, legH, 8), wood);
+      leg.position.set(Math.cos(a) * (radius * 0.62), FLOOR_Y + legH / 2, Math.sin(a) * (radius * 0.62));
+      leg.castShadow = true;
+      sg.add(leg);
+    }
+    const top = new THREE.Mesh(new THREE.CylinderGeometry(radius, radius * 0.96, 0.07, 18), woodLight);
+    top.position.set(0, seatTop - 0.035, 0);
+    top.castShadow = true;
+    top.receiveShadow = true;
+    sg.add(top);
+    sg.position.set(x, 0, z);
+    scene.add(sg);
+  }
+  const stoolSpot = LOUNGE.seats.find((spot) => spot.id === "stool");
+  stool(stoolSpot.x, stoolSpot.z, 0.42);
+  stool(LOUNGE.overflow.x, LOUNGE.overflow.z, 0.36);
+}
+
 (async function boot() {
   try {
     await decorateWalls();
-    // Desk center sits 1.2 outside the rug (radius 3.5). Front is +Z.
-    // Chairs stay on the outer side: front desks face -Z, back desks are turned around.
-    const deskD = (RUG_R + 1.2) * Math.SQRT1_2;
-    await deskSet("ai", -deskD, deskD, "開發", 0);
-    await deskSet("design", deskD, deskD, "美術", 0);
-    await deskSet("write", -deskD, -deskD, "策劃", Math.PI);
-    await deskSet("grok", deskD, -deskD, "隊長", Math.PI);
+    buildGlassOffice();
+    buildLounge();
+    // Open desks stay 1.2 outside the rug. The captain desk moves inside the glass office.
+    const place = (id, label) => {
+      const anchor = deskAnchor(id);
+      return deskSet(id, anchor.x, anchor.z, label, anchor.rot);
+    };
+    await place("ai", "開發");
+    await place("design", "美術");
+    await place("write", "策劃");
+    await place("grok", "隊長");
     // photocopiers along the side walls, clear of the desks
     photocopier(-9.4, 0.15, 0.4);
     photocopier(9.5, -0.3, -0.45);
