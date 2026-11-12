@@ -2,7 +2,7 @@
 
 萬聖節 Three.js 真 3D 辦公室（可拖轉／撳工位）。
 
-https://pakkimb-ai.github.io/virtual-office/?v=18a2
+https://pakkimb-ai.github.io/virtual-office/?v=18b1
 
 ## Assets（CC0）
 
@@ -30,8 +30,8 @@ https://pakkimb-ai.github.io/virtual-office/?v=18a2
 
 | state | 去邊 | 姿勢 |
 |-------|------|------|
-| `working` / `waiting` / `error` | 自己張枱 | 坐低、面向枱（KayKit `Sit_Chair_Idle`） |
-| `idle` / `done` | 地氈邊臨時閒位 | 企住（`Unarmed_Idle`），面向地氈中心 |
+| `working` / `waiting` / `error` | 自己張枱（隊長枱喺東北玻璃房入面，面向門口同地氈） | 坐低、面向枱（KayKit `Sit_Chair_Idle`） |
+| `idle` / `done` | 西南角休息區。沙發兩個位加一張矮凳；第四個人坐貼住休息區嘅蒲團，唔返地氈邊 | 輕坐（KayKit `Sit_Floor_Idle`，個人抬高坐上坐墊） |
 | 交接去玻璃房 | 今次唔做 | — |
 
 `working` 超過 **10 分鐘**冇更新會當過期（人留喺枱，撳工位徽章顯示「冇更新」）。任何狀態超過 **45 分鐘**冇心跳，畫面頂會有一行細提示。做緊嘢至少每 10 分鐘 push 一次；閒緊都至少每 45 分鐘 push 一次，先唔會當冇心跳。
@@ -80,8 +80,8 @@ curl -s "$API/api/status"
 靜態頁仍然係 GitHub Pages。`js/status-config.js` 嘅 `STATUS_API` 指向 `https://virtual-office-status.pakkimb-ai.workers.dev`（冇尾斜線），正式網址會自己連住 Worker。本機或者另一個 origin 可以加 query：
 
 ```text
-http://127.0.0.1:4173/?api=http://127.0.0.1:8787&v=18a2
-https://pakkimb-ai.github.io/virtual-office/?v=18a2&api=https://<your-worker>.workers.dev
+http://127.0.0.1:4173/?api=http://127.0.0.1:8787&v=18b1
+https://pakkimb-ai.github.io/virtual-office/?v=18b1&api=https://<your-worker>.workers.dev
 ```
 
 另一個終端機開靜態頁：`python3 -m http.server 4173`。頁面會 poll `GET /api/status`，同時訂 `WS /api/status/ws`。
